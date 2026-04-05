@@ -82,7 +82,13 @@ export async function getChecklistTemplates(): Promise<ChecklistTemplate[]> {
     return checklistTemplates;
   }
 
-  return data;
+  return data.map((item) => ({
+    id: item.id,
+    name: item.name,
+    businessTypeId: item.business_type_id,
+    description: item.description,
+    active: item.active,
+  }));
 }
 
 export async function getChecklistTemplateItems(): Promise<ChecklistTemplateItem[]> {
