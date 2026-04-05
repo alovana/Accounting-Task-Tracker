@@ -1,29 +1,9 @@
 # STATUS
 
-## Current Project
-accounting-work-tracker
-
-## Current Phase
-Building UI prototype screens
-
-## In Progress
-- Customer management UI
-- Checklist template UI
-- Monthly work tracking UI
-
-## Last Completed
-- Dashboard prototype
-- App shell
-- Supabase scaffolding
-- Product docs
-
-## Next Steps
-1. Finish 3 core UI screens
-2. Link navigation between screens
-3. Run local preview
-
-## Human Action Needed
-None yet
-
-## Last Updated
-2026-04-05 00:54 GMT+7
+- Current project: accounting-work-tracker
+- Current phase: Phase 2 - Core Data
+- In progress: UI scaffold and schema draft for customers/checklists
+- Last completed: Phase 1 foundation scaffolding
+- Next steps: connect Supabase schema and replace mock data with real queries
+- Human action needed: none
+- Last updated: 2026-04-05 10:50 ICT
