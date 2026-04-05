@@ -5,9 +5,21 @@ import { NotificationIssueList } from "@/components/phase5/notification-issue-li
 import { NotificationLogList } from "@/components/phase5/notification-log-list";
 import { NotificationPreviewList } from "@/components/phase5/notification-preview-list";
 import { NotificationRuleList } from "@/components/phase5/notification-rule-list";
+import { DeploymentReadinessCard } from "@/components/phase6/deployment-readiness-card";
+import { ReadinessChecklist } from "@/components/phase6/readiness-checklist";
 import { getLatestNotificationIssues, previewNotificationDispatch } from "@/lib/phase5/notification-engine";
 import { getEnabledRuleCount, getNotificationStats } from "@/lib/phase5/selectors";
 import { getNotificationLogs, getNotificationRules } from "@/lib/supabase/queries";
+
+const readinessItems = [
+  "role-based access scaffold พร้อมสำหรับต่อยอด auth จริง",
+  "query layer รองรับ mock-to-Supabase fallback ครบทุก phase หลัก",
+  "มี schema แยกตาม Phase 2-5 สำหรับนำไปรันใน Supabase",
+  "dashboard, reports, notifications และ settings พร้อมสำหรับ MVP demo",
+  "project status และ phase status docs ถูกอัปเดตแล้ว",
+];
+
+const schemaFiles = ["phase2-schema.sql", "phase3-schema.sql", "phase5-schema.sql"];
 
 export default async function SettingsPage() {
   const [notificationRules, notificationLogs] = await Promise.all([
@@ -19,14 +31,28 @@ export default async function SettingsPage() {
   const enabledRules = getEnabledRuleCount(notificationRules);
   const failedLogs = getLatestNotificationIssues(notificationLogs);
   const previews = previewNotificationDispatch();
+  const envConfigured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
       <PageHeader
-        title="Notification Settings"
-        description="จัดการ notification rules ดูสถานะการส่ง และ preview ข้อความแจ้งเตือนในระดับ MVP"
-        badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "Supabase connected mode" : "Mock notification mode"}
+        title="Settings & Readiness"
+        description="รวม notification settings, readiness checklist, และ deployment prep ในหน้าเดียว"
+        badge={envConfigured ? "Deployment env ready" : "Env setup pending"}
       />
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+        <SectionCard
+          title="Phase 6 Readiness Checklist"
+          description="สรุปความพร้อมด้าน role access, hardening เชิงแอป, responsive และ deployment prep"
+        >
+          <ReadinessChecklist items={readinessItems} />
+        </SectionCard>
+
+        <DeploymentReadinessCard envConfigured={envConfigured} schemaFiles={schemaFiles} />
+      </div>
 
       <section className="grid gap-4 md:grid-cols-5">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
