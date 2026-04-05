@@ -1,12 +1,14 @@
 # Phase 2 Status
 
 ## Scope completed
-- Business types domain scaffolded in UI and mock data
-- Customer management page scaffolded with sample list and summary cards
-- Checklist templates page scaffolded with template + item views
+- Business types domain scaffolded in UI and data layer
+- Customer management page connected to server-side query layer
+- Checklist templates page connected to server-side query layer
 - Draft SQL schema added for business_types, customers, checklist_templates, checklist_template_items
-- Shared domain types and mappers added for Phase 2
+- Shared domain types, mappers, loading states, and empty states added for Phase 2
+- Mock-to-Supabase fallback query strategy implemented so pages work before and after DB connection
 
 ## Notes
-- Current Phase 2 implementation is scaffold-first and uses mock data
-- Ready to connect Supabase tables and replace mock data in the next iteration
+- Current Phase 2 implementation supports both mock mode and Supabase-connected mode
+- If env vars are missing or queries fail, the app falls back to mock data instead of breaking
+- Ready for next iteration: create/edit forms and real CRUD actions

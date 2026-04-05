@@ -1,10 +1,14 @@
 import { businessTypes } from "@/lib/mock/phase2-data";
+import type { BusinessType, ServiceStatus } from "@/types/domain";
 
-export function getBusinessTypeName(businessTypeId: string) {
-  return businessTypes.find((item) => item.id === businessTypeId)?.name ?? "-";
+export function getBusinessTypeName(
+  businessTypeId: string,
+  availableBusinessTypes: BusinessType[] = businessTypes
+) {
+  return availableBusinessTypes.find((item) => item.id === businessTypeId)?.name ?? "-";
 }
 
-export function getServiceStatusLabel(status: string) {
+export function getServiceStatusLabel(status: ServiceStatus) {
   switch (status) {
     case "active":
       return "ให้บริการอยู่";
