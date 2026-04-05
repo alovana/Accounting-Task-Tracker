@@ -1,3 +1,4 @@
+import type { Customer } from "@/types/domain";
 import type { WorkCycle, WorkItem } from "@/lib/mock/phase3-data";
 
 export function getDashboardKpis(workCycles: WorkCycle[], workItems: WorkItem[]) {
@@ -36,13 +37,15 @@ export function getStaffSummaries(workItems: WorkItem[]) {
     grouped.set(item.assignedTo, current);
   });
 
-  return Array.from(grouped.entries()).map(([owner, items]) => ({
-    owner,
-    total: items.length,
-    blocked: items.filter((item) => item.status === "blocked").length,
-    inProgress: items.filter((item) => item.status === "in_progress").length,
-    completed: items.filter((item) => item.status === "completed").length,
-  }));
+  return Array.from(grouped.entries())
+    .map(([owner, items]) => ({
+      owner,
+      total: items.length,
+      blocked: items.filter((item) => item.status === "blocked").length,
+      inProgress: items.filter((item) => item.status === "in_progress").length,
+      completed: items.filter((item) => item.status === "completed").length,
+    }))
+    .sort((a, b) => b.total - a.total || a.owner.localeCompare(b.owner));
 }
 
 export function getWorkCycleHealth(workCycles: WorkCycle[]) {
@@ -66,8 +69,33 @@ export function getWorkCycleHealth(workCycles: WorkCycle[]) {
   ];
 }
 
-export function getOverdueLikeItems(workItems: WorkItem[]) {
+export function getAttentionItems(workItems: WorkItem[]) {
   return workItems.filter(
     (item) => item.status === "blocked" || item.status === "waiting_customer"
   );
+}
+
+export function getRecentItems(workItems: WorkItem[], limit = 5) {
+  return [...workItems]
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, limit);
+}
+
+export function getStaffDashboardSummary(
+  workItems: WorkItem[],
+  customers: Customer[],
+  owner = "พนักงาน A"
+) {
+  const myItems = workItems.filter((item) => item.assignedTo === owner);
+  const myCustomers = customers.filter((item) => item.assignedUserName === owner);
+
+  return {
+    owner,
+    myOpenItems: myItems.filter(
+      (item) => item.status === "not_started" || item.status === "in_progress"
+    ).length,
+    myBlockedItems: myItems.filter((item) => item.status === "blocked").length,
+    myWaitingCustomerItems: myItems.filter((item) => item.status === "waiting_customer").length,
+    myCustomers: myCustomers.length,
+  };
 }
