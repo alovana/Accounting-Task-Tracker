@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: accounting-work-tracker
-- Current phase: Phase 4 - Dashboard complete
+- Current phase: Phase 5 - Notifications scaffold
 - In progress: none
-- Last completed: manager dashboard, staff snapshot, and reporting summary complete
-- Next steps: begin Phase 5 notifications
+- Last completed: notification settings, rules, logs, and schema draft
+- Next steps: connect notification data layer and prepare LINE OA trigger integration
 - Human action needed: none
-- Last updated: 2026-04-05 14:59 ICT
+- Last updated: 2026-04-05 15:12 ICT
