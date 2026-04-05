@@ -1,5 +1,3 @@
-import type { Customer } from "@/types/domain";
-
 export type WorkItemStatus =
   | "not_started"
   | "in_progress"
@@ -116,14 +114,11 @@ export const workItems: WorkItem[] = [
     workCycleId: "wc-2026-03-003",
     title: "เตรียมรายการเปิดรอบเดือนแรก",
     assignedTo: "พนักงาน C",
-    status: "planned" as never,
+    status: "not_started",
     dueDate: "2026-04-10",
     note: "ลูกค้า onboarding ใหม่",
   },
-].map((item) => ({
-  ...item,
-  status: item.status === ("planned" as never) ? "not_started" : item.status,
-}));
+];
 
 export const workItemUpdates: WorkItemUpdate[] = [
   {
@@ -154,9 +149,3 @@ export const workItemUpdates: WorkItemUpdate[] = [
     createdAt: "2026-04-04 16:45",
   },
 ];
-
-export function getCustomerSummary(customers: Customer[]) {
-  return {
-    totalCustomers: customers.length,
-  };
-}

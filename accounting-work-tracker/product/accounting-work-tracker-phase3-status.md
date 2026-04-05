@@ -1,12 +1,13 @@
 # Phase 3 Status
 
-## Scope completed in this iteration
-- Monthly work board scaffolded with mock work cycles and work items
-- Status summary cards added for team visibility
-- Blocker notes section added
-- Work item update history section added
-- Reusable status badges for work cycle status and work item status added
+## Scope completed
+- Monthly work board connected to server-side query layer
+- Mock-to-Supabase fallback added for work_cycles, work_items, work_item_updates
+- Status summary selectors extracted for reuse
+- Blocker notes and status update history extracted into reusable components
+- SQL schema added for work_cycles, work_items, and work_item_updates
+- Monthly tracking page now supports both mock mode and Supabase-connected mode
 
 ## Notes
-- This iteration is mock-driven and focuses on UX flow before Supabase integration
-- Next step is to connect work_cycles, work_items, and work_item_updates to real data
+- If Supabase env vars are not configured or queries fail, the app falls back to mock data
+- Ready for next step: real status mutation flow and monthly generation actions
