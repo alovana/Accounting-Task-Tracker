@@ -1,5 +1,6 @@
 import { businessTypes, checklistTemplateItems, checklistTemplates, customers } from "@/lib/mock/phase2-data";
 import { workCycles, workItems, workItemUpdates } from "@/lib/mock/phase3-data";
+import { notificationLogs, notificationRules } from "@/lib/mock/phase5-data";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { WorkCycle, WorkItem, WorkItemUpdate } from "@/lib/mock/phase3-data";
 import type {
@@ -8,6 +9,7 @@ import type {
   ChecklistTemplateItem,
   Customer,
 } from "@/types/domain";
+import type { NotificationLog, NotificationRule } from "@/types/notifications";
 
 function shouldUseMockData() {
   return !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -200,5 +202,58 @@ export async function getWorkItemUpdates(): Promise<WorkItemUpdate[]> {
     comment: item.comment,
     updatedBy: item.updated_by ?? "system",
     createdAt: item.created_at,
+  }));
+}
+
+export async function getNotificationRules(): Promise<NotificationRule[]> {
+  if (shouldUseMockData()) {
+    return notificationRules;
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("notification_rules")
+    .select("id, event_type, channel, enabled, recipients_json, template")
+    .order("event_type", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load notification rules", error);
+    return notificationRules;
+  }
+
+  return data.map((item) => ({
+    id: item.id,
+    eventType: item.event_type,
+    channel: item.channel,
+    enabled: item.enabled,
+    recipients: Array.isArray(item.recipients_json) ? item.recipients_json : [],
+    template: item.template,
+  }));
+}
+
+export async function getNotificationLogs(): Promise<NotificationLog[]> {
+  if (shouldUseMockData()) {
+    return notificationLogs;
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("line_notifications")
+    .select("id, event_type, target_type, message, status, sent_at, error_message")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load notification logs", error);
+    return notificationLogs;
+  }
+
+  return data.map((item) => ({
+    id: item.id,
+    eventType: item.event_type,
+    targetType: item.target_type,
+    targetName: item.message,
+    status: item.status,
+    sentAt: item.sent_at ?? undefined,
+    errorMessage: item.error_message ?? undefined,
   }));
 }

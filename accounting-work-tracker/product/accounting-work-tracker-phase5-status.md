@@ -1,13 +1,13 @@
 # Phase 5 Status
 
-## Scope completed in this iteration
-- Notification settings page scaffolded for LINE OA event triggers
-- Notification rules mock model added
-- Notification logs mock model added
-- Notification selectors added for summary cards
+## Scope completed
+- Notification settings page connected to server-side query layer
+- Mock-to-Supabase fallback added for notification_rules and line_notifications
+- Notification rules, logs, preview messages, and failed delivery panels added
+- LINE-style message preview builder added for completed, blocked, and overdue events
 - SQL schema draft added for notification_rules and line_notifications
-- Coverage included for completed, blocked, and overdue alert scenarios
+- Phase 5 now covers MVP visibility for notification triggers and delivery outcomes
 
 ## Notes
-- This iteration is notification scaffold only and does not send real LINE messages yet
-- Ready for next enhancement: real event trigger functions and LINE OA integration layer
+- This phase does not send real LINE OA messages yet, but the app is ready for integration work
+- Ready for next enhancement: real dispatch actions, token configuration, and event-trigger execution
