@@ -11,20 +11,35 @@ import {
   getBlockedWorkItems,
 } from "@/lib/phase3/selectors";
 import {
+  getChecklistTemplateItems,
+  getChecklistTemplates,
+  getCustomers,
   getWorkCycles,
   getWorkItems,
   getWorkItemUpdates,
 } from "@/lib/supabase/queries";
+import { buildMonthlyGenerationPreview } from "@/lib/work-generation";
 
 export default async function WorkCyclesPage() {
-  const [workCycles, workItems, workItemUpdates] = await Promise.all([
+  const [workCycles, workItems, workItemUpdates, customers, checklistTemplates, checklistTemplateItems] = await Promise.all([
     getWorkCycles(),
     getWorkItems(),
     getWorkItemUpdates(),
+    getCustomers(),
+    getChecklistTemplates(),
+    getChecklistTemplateItems(),
   ]);
 
   const summary = getWorkCycleSummary(workCycles, workItems);
   const blockedItems = getBlockedWorkItems(workItems);
+  const now = new Date();
+  const generationPreview = buildMonthlyGenerationPreview({
+    customers,
+    checklistTemplates,
+    checklistTemplateItems,
+    periodYear: now.getUTCFullYear(),
+    periodMonth: now.getUTCMonth() + 1,
+  });
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
@@ -110,6 +125,50 @@ export default async function WorkCyclesPage() {
         </SectionCard>
 
         <div className="space-y-6">
+          <SectionCard
+            title="Monthly Generation Readiness"
+            description="เช็กความพร้อมของข้อมูลต้นทางก่อนสร้างรอบงานรายเดือนจริง"
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">ลูกค้าที่พร้อมสร้างงาน</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{generationPreview.summary.matchedCustomers}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">ลูกค้าที่ข้อมูลยังไม่ครบ</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{generationPreview.summary.unmatchedCustomers}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {generationPreview.customerPlans.length === 0 ? (
+                <EmptyState
+                  title="ยังไม่มีข้อมูลพร้อมสร้างงาน"
+                  description="ตรวจว่าลูกค้า active และมี checklist template พร้อม items ครบแล้ว"
+                />
+              ) : (
+                generationPreview.customerPlans.map((plan) => (
+                  <div key={plan.customerId} className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="font-medium text-slate-900">{plan.customerName}</p>
+                    <p className="mt-1 text-sm text-slate-600">template: {plan.templateName}</p>
+                    <p className="mt-2 text-xs text-slate-500">พร้อมสร้าง {plan.workItemCount} work items</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {generationPreview.unmatchedCustomers.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {generationPreview.unmatchedCustomers.map((item) => (
+                  <div key={item.customerId} className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+                    <p className="font-medium">{item.customerName}</p>
+                    <p className="mt-1">{item.reason}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </SectionCard>
+
           <SectionCard
             title="Status Update Flow"
             description="ประวัติการอัปเดตสถานะของ work items"
