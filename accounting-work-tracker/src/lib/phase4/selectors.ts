@@ -1,3 +1,4 @@
+import { getWorkCycleStatusLabel, getWorkItemStatusLabel } from "@/lib/phase3/status-mappers";
 import type { Customer } from "@/types/domain";
 import type { WorkCycle, WorkItem } from "@/lib/mock/phase3-data";
 
@@ -43,42 +44,38 @@ export function getStaffSummaries(workItems: WorkItem[]) {
       total: items.length,
       blocked: items.filter((item) => item.status === "blocked").length,
       inProgress: items.filter((item) => item.status === "in_progress").length,
+      waitingCustomer: items.filter((item) => item.status === "waiting_customer").length,
       completed: items.filter((item) => item.status === "completed").length,
+      completionRate: items.length === 0 ? 0 : Math.round((items.filter((item) => item.status === "completed").length / items.length) * 100),
     }))
     .sort((a, b) => b.total - a.total || a.owner.localeCompare(b.owner));
 }
 
 export function getWorkCycleHealth(workCycles: WorkCycle[]) {
-  return [
-    {
-      label: "planned",
-      value: workCycles.filter((item) => item.status === "planned").length,
-    },
-    {
-      label: "in progress",
-      value: workCycles.filter((item) => item.status === "in_progress").length,
-    },
-    {
-      label: "at risk",
-      value: workCycles.filter((item) => item.status === "at_risk").length,
-    },
-    {
-      label: "completed",
-      value: workCycles.filter((item) => item.status === "completed").length,
-    },
-  ];
+  return ["planned", "in_progress", "at_risk", "completed"].map((status) => ({
+    label: getWorkCycleStatusLabel(status as WorkCycle["status"]),
+    value: workCycles.filter((item) => item.status === status).length,
+  }));
 }
 
 export function getAttentionItems(workItems: WorkItem[]) {
-  return workItems.filter(
-    (item) => item.status === "blocked" || item.status === "waiting_customer"
-  );
+  return workItems
+    .filter((item) => item.status === "blocked" || item.status === "waiting_customer")
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 }
 
 export function getRecentItems(workItems: WorkItem[], limit = 5) {
   return [...workItems]
+    .filter((item) => item.status !== "completed" && item.status !== "skipped")
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, limit);
+}
+
+export function getWorkloadStatusBreakdown(workItems: WorkItem[]) {
+  return ["not_started", "in_progress", "waiting_customer", "blocked", "completed", "skipped"].map((status) => ({
+    label: getWorkItemStatusLabel(status as WorkItem["status"]),
+    value: workItems.filter((item) => item.status === status).length,
+  }));
 }
 
 export function getStaffDashboardSummary(

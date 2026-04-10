@@ -6,6 +6,7 @@ import { KpiGrid } from "@/components/phase4/kpi-grid";
 import { StaffDashboardCard } from "@/components/phase4/staff-dashboard-card";
 import { StaffPerformanceTable } from "@/components/phase4/staff-performance-table";
 import { WorkCycleHealthList } from "@/components/phase4/work-cycle-health-list";
+import { WorkloadStatusList } from "@/components/phase4/workload-status-list";
 import {
   getAttentionItems,
   getDashboardKpis,
@@ -13,6 +14,7 @@ import {
   getStaffDashboardSummary,
   getStaffSummaries,
   getWorkCycleHealth,
+  getWorkloadStatusBreakdown,
 } from "@/lib/phase4/selectors";
 import { getCustomers, getWorkCycles, getWorkItems } from "@/lib/supabase/queries";
 
@@ -28,6 +30,7 @@ export default async function DashboardPage() {
   const cycleHealth = getWorkCycleHealth(workCycles);
   const attentionItems = getAttentionItems(workItems);
   const recentItems = getRecentItems(workItems);
+  const workloadStatus = getWorkloadStatusBreakdown(workItems);
   const staffSummary = getStaffDashboardSummary(workItems, customers);
 
   return (
@@ -67,12 +70,21 @@ export default async function DashboardPage() {
           )}
         </SectionCard>
 
-        <SectionCard
-          title="Work Cycle Health"
-          description="ดูจำนวนรอบงานตามสถานะเพื่อประเมินสุขภาพของทีม"
-        >
-          <WorkCycleHealthList items={cycleHealth} />
-        </SectionCard>
+        <div className="space-y-6">
+          <SectionCard
+            title="Work Cycle Health"
+            description="ดูจำนวนรอบงานตามสถานะเพื่อประเมินสุขภาพของทีม"
+          >
+            <WorkCycleHealthList items={cycleHealth} />
+          </SectionCard>
+
+          <SectionCard
+            title="Workload by Status"
+            description="ดูปริมาณงานตามสถานะจริงเพื่อช่วยจัดลำดับการติดตาม"
+          >
+            <WorkloadStatusList items={workloadStatus} />
+          </SectionCard>
+        </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">

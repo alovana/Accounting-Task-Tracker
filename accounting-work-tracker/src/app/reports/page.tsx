@@ -3,13 +3,15 @@ import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { StaffPerformanceTable } from "@/components/phase4/staff-performance-table";
 import { WorkCycleHealthList } from "@/components/phase4/work-cycle-health-list";
-import { getStaffSummaries, getWorkCycleHealth } from "@/lib/phase4/selectors";
+import { WorkloadStatusList } from "@/components/phase4/workload-status-list";
+import { getStaffSummaries, getWorkCycleHealth, getWorkloadStatusBreakdown } from "@/lib/phase4/selectors";
 import { getWorkCycles, getWorkItems } from "@/lib/supabase/queries";
 
 export default async function ReportsPage() {
   const [workCycles, workItems] = await Promise.all([getWorkCycles(), getWorkItems()]);
   const staffRows = getStaffSummaries(workItems);
   const cycleHealth = getWorkCycleHealth(workCycles);
+  const workloadStatus = getWorkloadStatusBreakdown(workItems);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
@@ -33,12 +35,21 @@ export default async function ReportsPage() {
         )}
       </SectionCard>
 
-      <SectionCard
-        title="Work Cycle Health Summary"
-        description="ใช้ดูภาพรวมรอบงานว่าอยู่ในสถานะใดบ้าง"
-      >
-        <WorkCycleHealthList items={cycleHealth} />
-      </SectionCard>
+      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <SectionCard
+          title="Work Cycle Health Summary"
+          description="ใช้ดูภาพรวมรอบงานว่าอยู่ในสถานะใดบ้าง"
+        >
+          <WorkCycleHealthList items={cycleHealth} />
+        </SectionCard>
+
+        <SectionCard
+          title="Workload by Status"
+          description="สรุปจำนวนงานตามสถานะจริงของระบบ"
+        >
+          <WorkloadStatusList items={workloadStatus} />
+        </SectionCard>
+      </section>
     </main>
   );
 }

@@ -3,7 +3,9 @@ type StaffSummary = {
   total: number;
   blocked: number;
   inProgress: number;
+  waitingCustomer: number;
   completed: number;
+  completionRate: number;
 };
 
 export function StaffPerformanceTable({ rows }: { rows: StaffSummary[] }) {
@@ -16,7 +18,9 @@ export function StaffPerformanceTable({ rows }: { rows: StaffSummary[] }) {
             <th className="px-3">งานทั้งหมด</th>
             <th className="px-3">กำลังทำ</th>
             <th className="px-3">ติดปัญหา</th>
+            <th className="px-3">รอลูกค้า</th>
             <th className="px-3">เสร็จแล้ว</th>
+            <th className="px-3">% สำเร็จ</th>
           </tr>
         </thead>
         <tbody>
@@ -26,7 +30,9 @@ export function StaffPerformanceTable({ rows }: { rows: StaffSummary[] }) {
               <td className="px-3 py-4">{row.total}</td>
               <td className="px-3 py-4">{row.inProgress}</td>
               <td className="px-3 py-4">{row.blocked}</td>
-              <td className="rounded-r-2xl px-3 py-4">{row.completed}</td>
+              <td className="px-3 py-4">{row.waitingCustomer}</td>
+              <td className="px-3 py-4">{row.completed}</td>
+              <td className="rounded-r-2xl px-3 py-4">{row.completionRate}%</td>
             </tr>
           ))}
         </tbody>
