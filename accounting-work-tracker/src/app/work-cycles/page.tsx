@@ -5,6 +5,7 @@ import { BlockerList } from "@/components/phase3/blocker-list";
 import { StatusUpdateList } from "@/components/phase3/status-update-list";
 import { WorkCycleStatusBadge } from "@/components/phase3/work-cycle-status-badge";
 import { WorkItemStatusBadge } from "@/components/phase3/work-item-status-badge";
+import { WorkItemStatusForm } from "@/components/phase3/work-item-status-form";
 import {
   getLatestWorkItemUpdateMap,
   getWorkCycleSummary,
@@ -120,6 +121,12 @@ export default async function WorkCyclesPage() {
                                 </span>
                               ))}
                             </div>
+
+                            <WorkItemStatusForm
+                              workItemId={item.id}
+                              workCycleId={item.workCycleId}
+                              currentStatus={item.status}
+                            />
 
                             {item.note ? (
                               <p className="mt-3 text-sm text-slate-600">หมายเหตุ: {item.note}</p>
