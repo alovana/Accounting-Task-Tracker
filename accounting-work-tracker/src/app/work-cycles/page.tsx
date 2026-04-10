@@ -6,10 +6,13 @@ import { StatusUpdateList } from "@/components/phase3/status-update-list";
 import { WorkCycleStatusBadge } from "@/components/phase3/work-cycle-status-badge";
 import { WorkItemStatusBadge } from "@/components/phase3/work-item-status-badge";
 import {
+  getLatestWorkItemUpdateMap,
   getWorkCycleSummary,
   getWorkItemsByCycle,
   getBlockedWorkItems,
+  getRecommendedCycleStatus,
 } from "@/lib/phase3/selectors";
+import { getNextAllowedStatuses, getWorkItemStatusLabel } from "@/lib/phase3/status-mappers";
 import {
   getChecklistTemplateItems,
   getChecklistTemplates,
@@ -32,6 +35,7 @@ export default async function WorkCyclesPage() {
 
   const summary = getWorkCycleSummary(workCycles, workItems);
   const blockedItems = getBlockedWorkItems(workItems);
+  const latestUpdateMap = getLatestWorkItemUpdateMap(workItemUpdates);
   const now = new Date();
   const generationPreview = buildMonthlyGenerationPreview({
     customers,
@@ -82,7 +86,12 @@ export default async function WorkCyclesPage() {
                           รอบงาน {cycle.periodMonth}/{cycle.periodYear} · generated {cycle.generatedAt}
                         </p>
                       </div>
-                      <WorkCycleStatusBadge status={cycle.status} />
+                      <div className="text-right">
+                        <WorkCycleStatusBadge status={cycle.status} />
+                        <p className="mt-2 text-xs text-slate-500">
+                          แนะนำจาก work items: {getRecommendedCycleStatus(relatedItems) === cycle.status ? "สอดคล้องแล้ว" : "ควรปรับสถานะรอบงาน"}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="mt-4 grid gap-3">
@@ -104,8 +113,22 @@ export default async function WorkCyclesPage() {
                               <WorkItemStatusBadge status={item.status} />
                             </div>
 
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                              {getNextAllowedStatuses(item.status).map((status) => (
+                                <span key={status} className="rounded-full bg-slate-100 px-3 py-1">
+                                  next: {getWorkItemStatusLabel(status)}
+                                </span>
+                              ))}
+                            </div>
+
                             {item.note ? (
                               <p className="mt-3 text-sm text-slate-600">หมายเหตุ: {item.note}</p>
+                            ) : null}
+
+                            {latestUpdateMap.get(item.id) ? (
+                              <div className="mt-3 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
+                                อัปเดตล่าสุด: {latestUpdateMap.get(item.id)?.comment} ({latestUpdateMap.get(item.id)?.updatedBy})
+                              </div>
                             ) : null}
 
                             {item.blockedReason ? (

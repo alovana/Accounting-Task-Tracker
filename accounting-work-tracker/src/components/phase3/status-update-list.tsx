@@ -1,4 +1,5 @@
 import { getUpdatesForDisplay } from "@/lib/phase3/selectors";
+import { getWorkItemStatusLabel } from "@/lib/phase3/status-mappers";
 import type { WorkItemUpdate } from "@/lib/mock/phase3-data";
 
 type StatusUpdateListProps = {
@@ -17,7 +18,7 @@ export function StatusUpdateList({ updates }: StatusUpdateListProps) {
             {update.updatedBy} · {update.createdAt}
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            {update.oldStatus} → {update.newStatus}
+            {getWorkItemStatusLabel(update.oldStatus)} → {getWorkItemStatusLabel(update.newStatus)}
           </p>
         </div>
       ))}
