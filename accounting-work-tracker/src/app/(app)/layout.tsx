@@ -1,9 +1,12 @@
 import { AppShell } from "@/components/app-shell";
+import { resolveRoleFromSearchParams } from "@/lib/auth/session";
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <AppShell>{children}</AppShell>;
+  const role = resolveRoleFromSearchParams();
+
+  return <AppShell role={role}>{children}</AppShell>;
 }

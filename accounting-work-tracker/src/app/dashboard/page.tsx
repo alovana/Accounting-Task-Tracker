@@ -7,6 +7,7 @@ import { StaffDashboardCard } from "@/components/phase4/staff-dashboard-card";
 import { StaffPerformanceTable } from "@/components/phase4/staff-performance-table";
 import { WorkCycleHealthList } from "@/components/phase4/work-cycle-health-list";
 import { WorkloadStatusList } from "@/components/phase4/workload-status-list";
+import { requirePermission, resolveRoleFromSearchParams } from "@/lib/auth/session";
 import {
   getAttentionItems,
   getDashboardKpis,
@@ -18,7 +19,13 @@ import {
 } from "@/lib/phase4/selectors";
 import { getCustomers, getWorkCycles, getWorkItems } from "@/lib/supabase/queries";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const role = resolveRoleFromSearchParams(await searchParams);
+  requirePermission(role, "view_dashboard");
   const [customers, workCycles, workItems] = await Promise.all([
     getCustomers(),
     getWorkCycles(),

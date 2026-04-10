@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { RoleAccessBadge } from "@/components/auth/role-access-badge";
+import type { AppRole } from "@/lib/constants";
 
 type AppShellProps = {
   children: React.ReactNode;
+  role?: AppRole;
 };
 
 const navItems = [
@@ -14,7 +16,7 @@ const navItems = [
   { label: "ตั้งค่า", href: "/settings" },
 ];
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, role = "admin" }: AppShellProps) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex min-h-screen">
@@ -27,7 +29,7 @@ export function AppShell({ children }: AppShellProps) {
             {navItems.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={`${item.href}?role=${role}`}
                 className="flex w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
                 {item.label}
@@ -43,7 +45,7 @@ export function AppShell({ children }: AppShellProps) {
                 <p className="text-sm text-slate-500">พร้อมใช้งาน MVP และเตรียม deploy</p>
                 <h2 className="text-lg font-semibold">ศูนย์ติดตามงานบัญชี</h2>
               </div>
-              <RoleAccessBadge role="admin" />
+              <RoleAccessBadge role={role} />
             </div>
           </header>
 

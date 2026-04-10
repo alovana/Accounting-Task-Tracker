@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import type { AppRole } from "@/lib/constants";
 import type { LoginFormState } from "@/types/auth";
 
 const initialState: LoginFormState = {
   email: "",
   password: "",
 };
+
+const demoRoles: AppRole[] = ["admin", "manager", "staff"];
 
 export function LoginForm() {
   const [form, setForm] = useState<LoginFormState>(initialState);
@@ -71,6 +75,21 @@ export function LoginForm() {
       >
         เข้าสู่ระบบ
       </button>
+
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+        <p className="font-medium text-slate-800">เข้าใช้งานแบบ demo role</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {demoRoles.map((role) => (
+            <Link
+              key={role}
+              href={`/dashboard?role=${role}`}
+              className="rounded-lg bg-white px-3 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+            >
+              เข้าเป็น {role}
+            </Link>
+          ))}
+        </div>
+      </div>
 
       <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
         <p className="font-medium text-slate-800">สถานะตอนนี้</p>

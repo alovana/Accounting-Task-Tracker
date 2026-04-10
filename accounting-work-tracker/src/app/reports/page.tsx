@@ -4,10 +4,17 @@ import { SectionCard } from "@/components/phase2/section-card";
 import { StaffPerformanceTable } from "@/components/phase4/staff-performance-table";
 import { WorkCycleHealthList } from "@/components/phase4/work-cycle-health-list";
 import { WorkloadStatusList } from "@/components/phase4/workload-status-list";
+import { requirePermission, resolveRoleFromSearchParams } from "@/lib/auth/session";
 import { getStaffSummaries, getWorkCycleHealth, getWorkloadStatusBreakdown } from "@/lib/phase4/selectors";
 import { getWorkCycles, getWorkItems } from "@/lib/supabase/queries";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const role = resolveRoleFromSearchParams(await searchParams);
+  requirePermission(role, "view_reports");
   const [workCycles, workItems] = await Promise.all([getWorkCycles(), getWorkItems()]);
   const staffRows = getStaffSummaries(workItems);
   const cycleHealth = getWorkCycleHealth(workCycles);

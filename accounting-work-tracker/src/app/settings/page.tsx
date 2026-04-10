@@ -7,6 +7,7 @@ import { NotificationPreviewList } from "@/components/phase5/notification-previe
 import { NotificationRuleList } from "@/components/phase5/notification-rule-list";
 import { DeploymentReadinessCard } from "@/components/phase6/deployment-readiness-card";
 import { ReadinessChecklist } from "@/components/phase6/readiness-checklist";
+import { requirePermission, resolveRoleFromSearchParams } from "@/lib/auth/session";
 import { getLatestNotificationIssues, previewNotificationDispatch } from "@/lib/phase5/notification-engine";
 import { getEnabledRuleCount, getNotificationStats } from "@/lib/phase5/selectors";
 import { getNotificationLogs, getNotificationRules } from "@/lib/supabase/queries";
@@ -21,7 +22,13 @@ const readinessItems = [
 
 const schemaFiles = ["phase2-schema.sql", "phase3-schema.sql", "phase5-schema.sql"];
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const role = resolveRoleFromSearchParams(await searchParams);
+  requirePermission(role, "manage_settings");
   const [notificationRules, notificationLogs] = await Promise.all([
     getNotificationRules(),
     getNotificationLogs(),
