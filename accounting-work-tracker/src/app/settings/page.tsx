@@ -5,6 +5,7 @@ import { NotificationIssueList } from "@/components/phase5/notification-issue-li
 import { NotificationLogList } from "@/components/phase5/notification-log-list";
 import { NotificationPreviewList } from "@/components/phase5/notification-preview-list";
 import { NotificationRuleList } from "@/components/phase5/notification-rule-list";
+import { LineTestForm } from "@/components/phase5/line-test-form";
 import { DeploymentReadinessCard } from "@/components/phase6/deployment-readiness-card";
 import { ReadinessChecklist } from "@/components/phase6/readiness-checklist";
 import { requirePermission } from "@/lib/auth/session";
@@ -118,6 +119,15 @@ export default async function SettingsPage() {
           )}
         </SectionCard>
 
+        <SectionCard
+          title="LINE OA Test Queue"
+          description="เพิ่มข้อความทดสอบเข้า line_notifications เพื่อเช็ก flow การคิวและ log"
+        >
+          <LineTestForm />
+        </SectionCard>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <SectionCard
           title="Failed Deliveries"
           description="ดูรายการแจ้งเตือนที่ล้มเหลวเพื่อใช้ debug การเชื่อม LINE OA"
