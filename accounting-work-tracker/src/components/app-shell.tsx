@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RoleAccessBadge } from "@/components/auth/role-access-badge";
+import { logoutAction } from "@/app/login/actions";
 import type { AppRole } from "@/lib/constants";
 
 type AppShellProps = {
@@ -45,7 +46,17 @@ export function AppShell({ children, role = "admin" }: AppShellProps) {
                 <p className="text-sm text-slate-500">พร้อมใช้งาน MVP และเตรียม deploy</p>
                 <h2 className="text-lg font-semibold">ศูนย์ติดตามงานบัญชี</h2>
               </div>
-              <RoleAccessBadge role={role} />
+              <div className="flex items-center gap-3">
+                <RoleAccessBadge role={role} />
+                <form action={logoutAction}>
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-700"
+                  >
+                    ออกจากระบบ
+                  </button>
+                </form>
+              </div>
             </div>
           </header>
 
