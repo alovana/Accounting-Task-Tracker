@@ -1,9 +1,11 @@
 import { LoginForm } from "@/components/auth/login-form";
 import { RoleAccessBadge } from "@/components/auth/role-access-badge";
+import { getCurrentSessionUser } from "@/lib/auth/session";
 import { APP_NAME_TH } from "@/lib/constants";
 import { rolePermissions } from "@/lib/auth/permissions";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const currentUser = await getCurrentSessionUser();
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
       <div className="grid w-full max-w-6xl gap-8 lg:grid-cols-[1.15fr_0.85fr]">
@@ -28,7 +30,14 @@ export default function LoginPage() {
         </section>
 
         <section className="flex items-center">
-          <LoginForm />
+          <div className="w-full space-y-4">
+            {currentUser ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                เข้าสู่ระบบอยู่แล้วเป็น {currentUser.fullName} ({currentUser.role})
+              </div>
+            ) : null}
+            <LoginForm />
+          </div>
         </section>
       </div>
     </main>

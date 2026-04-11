@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import type { AppRole } from "@/lib/constants";
+import { useActionState, useMemo, useState } from "react";
+import { loginAction, type LoginActionState } from "@/app/login/actions";
 import type { LoginFormState } from "@/types/auth";
 
 const initialState: LoginFormState = {
@@ -10,17 +9,18 @@ const initialState: LoginFormState = {
   password: "",
 };
 
-const demoRoles: AppRole[] = ["admin", "manager", "staff"];
+const initialActionState: LoginActionState = {};
 
 export function LoginForm() {
   const [form, setForm] = useState<LoginFormState>(initialState);
+  const [state, formAction, isPending] = useActionState(loginAction, initialActionState);
 
   const isDisabled = useMemo(() => {
     return form.email.trim() === "" || form.password.trim() === "";
   }, [form]);
 
   return (
-    <form className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <form action={formAction} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">เข้าสู่ระบบ</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -35,6 +35,7 @@ export function LoginForm() {
         <input
           id="email"
           type="email"
+          name="email"
           value={form.email}
           onChange={(event) =>
             setForm((current) => ({ ...current, email: event.target.value }))
@@ -59,6 +60,7 @@ export function LoginForm() {
         <input
           id="password"
           type="password"
+          name="password"
           value={form.password}
           onChange={(event) =>
             setForm((current) => ({ ...current, password: event.target.value }))
@@ -70,24 +72,22 @@ export function LoginForm() {
 
       <button
         type="submit"
-        disabled={isDisabled}
+        disabled={isDisabled || isPending}
         className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
-        เข้าสู่ระบบ
+        {isPending ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
       </button>
 
+      {state.error ? (
+        <div className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">{state.error}</div>
+      ) : null}
+
       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-        <p className="font-medium text-slate-800">เข้าใช้งานแบบ demo role</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {demoRoles.map((role) => (
-            <Link
-              key={role}
-              href={`/dashboard?role=${role}`}
-              className="rounded-lg bg-white px-3 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-            >
-              เข้าเป็น {role}
-            </Link>
-          ))}
+        <p className="font-medium text-slate-800">บัญชีทดสอบ</p>
+        <div className="mt-2 space-y-1 text-xs text-slate-600">
+          <p>admin@company.com / admin1234</p>
+          <p>manager1@company.com / manager1234</p>
+          <p>staff1@company.com / staff1234</p>
         </div>
       </div>
 

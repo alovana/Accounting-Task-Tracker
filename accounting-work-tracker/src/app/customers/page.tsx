@@ -2,17 +2,12 @@ import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { StatusBadge } from "@/components/phase2/status-badge";
-import { requirePermission, resolveRoleFromSearchParams } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { getBusinessTypeName, getServiceStatusLabel } from "@/lib/mappers";
 import { getBusinessTypes, getCustomers } from "@/lib/supabase/queries";
 
-export default async function CustomersPage({
-  searchParams,
-}: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const role = resolveRoleFromSearchParams(await searchParams);
-  requirePermission(role, "manage_customers");
+export default async function CustomersPage() {
+  await requirePermission("manage_customers");
   const [businessTypes, customers] = await Promise.all([getBusinessTypes(), getCustomers()]);
 
   const summary = [

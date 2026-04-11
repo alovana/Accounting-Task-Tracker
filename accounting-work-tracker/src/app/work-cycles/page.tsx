@@ -14,7 +14,7 @@ import {
   getRecommendedCycleStatus,
 } from "@/lib/phase3/selectors";
 import { getNextAllowedStatuses, getWorkItemStatusLabel } from "@/lib/phase3/status-mappers";
-import { requirePermission, resolveRoleFromSearchParams } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import {
   getChecklistTemplateItems,
   getChecklistTemplates,
@@ -25,13 +25,8 @@ import {
 } from "@/lib/supabase/queries";
 import { buildMonthlyGenerationPreview } from "@/lib/work-generation";
 
-export default async function WorkCyclesPage({
-  searchParams,
-}: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const role = resolveRoleFromSearchParams(await searchParams);
-  requirePermission(role, "manage_work_cycles");
+export default async function WorkCyclesPage() {
+  await requirePermission("manage_work_cycles");
   const [workCycles, workItems, workItemUpdates, customers, checklistTemplates, checklistTemplateItems] = await Promise.all([
     getWorkCycles(),
     getWorkItems(),
