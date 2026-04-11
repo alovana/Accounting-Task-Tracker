@@ -1,3 +1,4 @@
+import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
@@ -36,96 +37,98 @@ export default async function DashboardPage() {
   const staffSummary = getStaffDashboardSummary(workItems, customers);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-6">
-      <PageHeader
-        title="Dashboard Overview"
-        description="รวมมุมมอง manager dashboard และ staff dashboard สำหรับใช้งาน MVP"
-        badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "Supabase connected mode" : "Mock dashboard mode"}
-      />
-
-      <KpiGrid items={kpis} />
-
-      <SectionCard
-        title="Staff Dashboard Snapshot"
-        description="มุมมองตัวอย่างของพนักงานสำหรับดูงานของตัวเอง งานค้าง และลูกค้าที่รับผิดชอบ"
-      >
-        <StaffDashboardCard
-          myOpenItems={staffSummary.myOpenItems}
-          myBlockedItems={staffSummary.myBlockedItems}
-          myWaitingCustomerItems={staffSummary.myWaitingCustomerItems}
-          myCustomers={staffSummary.myCustomers}
+    <AppShell>
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-6">
+        <PageHeader
+          title="Dashboard Overview"
+          description="รวมมุมมอง manager dashboard และ staff dashboard สำหรับใช้งาน MVP"
+          badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "Supabase connected mode" : "Mock dashboard mode"}
         />
-      </SectionCard>
 
-      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <KpiGrid items={kpis} />
+
         <SectionCard
-          title="Team Performance"
-          description="สรุปจำนวนงานของแต่ละคนเพื่อใช้ติดตามกำลังงานและ blockers"
+          title="Staff Dashboard Snapshot"
+          description="มุมมองตัวอย่างของพนักงานสำหรับดูงานของตัวเอง งานค้าง และลูกค้าที่รับผิดชอบ"
         >
-          {staffRows.length === 0 ? (
-            <EmptyState
-              title="ยังไม่มีข้อมูลงานของทีม"
-              description="เมื่อมี work items แล้ว ระบบจะแสดง performance summary ในส่วนนี้"
-            />
-          ) : (
-            <StaffPerformanceTable rows={staffRows} />
-          )}
+          <StaffDashboardCard
+            myOpenItems={staffSummary.myOpenItems}
+            myBlockedItems={staffSummary.myBlockedItems}
+            myWaitingCustomerItems={staffSummary.myWaitingCustomerItems}
+            myCustomers={staffSummary.myCustomers}
+          />
         </SectionCard>
 
-        <div className="space-y-6">
+        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <SectionCard
-            title="Work Cycle Health"
-            description="ดูจำนวนรอบงานตามสถานะเพื่อประเมินสุขภาพของทีม"
+            title="Team Performance"
+            description="สรุปจำนวนงานของแต่ละคนเพื่อใช้ติดตามกำลังงานและ blockers"
           >
-            <WorkCycleHealthList items={cycleHealth} />
+            {staffRows.length === 0 ? (
+              <EmptyState
+                title="ยังไม่มีข้อมูลงานของทีม"
+                description="เมื่อมี work items แล้ว ระบบจะแสดง performance summary ในส่วนนี้"
+              />
+            ) : (
+              <StaffPerformanceTable rows={staffRows} />
+            )}
+          </SectionCard>
+
+          <div className="space-y-6">
+            <SectionCard
+              title="Work Cycle Health"
+              description="ดูจำนวนรอบงานตามสถานะเพื่อประเมินสุขภาพของทีม"
+            >
+              <WorkCycleHealthList items={cycleHealth} />
+            </SectionCard>
+
+            <SectionCard
+              title="Workload by Status"
+              description="ดูปริมาณงานตามสถานะจริงเพื่อช่วยจัดลำดับการติดตาม"
+            >
+              <WorkloadStatusList items={workloadStatus} />
+            </SectionCard>
+          </div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+          <SectionCard
+            title="งานที่ต้องติดตาม"
+            description="รวมงาน blocked และ waiting customer เพื่อให้ผู้จัดการเห็นปัญหาเร็วขึ้น"
+          >
+            {attentionItems.length === 0 ? (
+              <EmptyState
+                title="ไม่มีงานที่ต้องติดตามเป็นพิเศษ"
+                description="ตอนนี้ยังไม่มี blocked หรือ waiting customer items"
+              />
+            ) : (
+              <AttentionList items={attentionItems} />
+            )}
           </SectionCard>
 
           <SectionCard
-            title="Workload by Status"
-            description="ดูปริมาณงานตามสถานะจริงเพื่อช่วยจัดลำดับการติดตาม"
+            title="งานใกล้ถึงกำหนด"
+            description="ใช้ติดตามงานที่ควรเร่งดำเนินการในช่วงสั้น ๆ"
           >
-            <WorkloadStatusList items={workloadStatus} />
+            {recentItems.length === 0 ? (
+              <EmptyState
+                title="ยังไม่มีงานใกล้ถึงกำหนด"
+                description="เมื่อมี due date ระบบจะแสดงรายการในส่วนนี้"
+              />
+            ) : (
+              <div className="space-y-3">
+                {recentItems.map((item) => (
+                  <div key={item.id} className="rounded-xl bg-slate-50 p-4">
+                    <p className="font-medium text-slate-900">{item.title}</p>
+                    <p className="mt-1 text-sm text-slate-600">ผู้รับผิดชอบ: {item.assignedTo}</p>
+                    <p className="mt-1 text-sm text-slate-500">กำหนดส่ง: {item.dueDate}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </SectionCard>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <SectionCard
-          title="งานที่ต้องติดตาม"
-          description="รวมงาน blocked และ waiting customer เพื่อให้ผู้จัดการเห็นปัญหาเร็วขึ้น"
-        >
-          {attentionItems.length === 0 ? (
-            <EmptyState
-              title="ไม่มีงานที่ต้องติดตามเป็นพิเศษ"
-              description="ตอนนี้ยังไม่มี blocked หรือ waiting customer items"
-            />
-          ) : (
-            <AttentionList items={attentionItems} />
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title="งานใกล้ถึงกำหนด"
-          description="ใช้ติดตามงานที่ควรเร่งดำเนินการในช่วงสั้น ๆ"
-        >
-          {recentItems.length === 0 ? (
-            <EmptyState
-              title="ยังไม่มีงานใกล้ถึงกำหนด"
-              description="เมื่อมี due date ระบบจะแสดงรายการในส่วนนี้"
-            />
-          ) : (
-            <div className="space-y-3">
-              {recentItems.map((item) => (
-                <div key={item.id} className="rounded-xl bg-slate-50 p-4">
-                  <p className="font-medium text-slate-900">{item.title}</p>
-                  <p className="mt-1 text-sm text-slate-600">ผู้รับผิดชอบ: {item.assignedTo}</p>
-                  <p className="mt-1 text-sm text-slate-500">กำหนดส่ง: {item.dueDate}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-      </section>
-    </main>
+        </section>
+      </main>
+    </AppShell>
   );
 }
