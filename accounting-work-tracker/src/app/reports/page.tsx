@@ -1,3 +1,4 @@
+import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
@@ -16,7 +17,8 @@ export default async function ReportsPage() {
   const workloadStatus = getWorkloadStatusBreakdown(workItems);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+    <AppShell>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
       <PageHeader
         title="Team Performance Report"
         description="รายงานผลงานรายคนและสุขภาพของรอบงานในระดับ MVP"
@@ -52,6 +54,7 @@ export default async function ReportsPage() {
           <WorkloadStatusList items={workloadStatus} />
         </SectionCard>
       </section>
-    </main>
+      </main>
+    </AppShell>
   );
 }

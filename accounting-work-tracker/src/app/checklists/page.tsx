@@ -1,3 +1,4 @@
+import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
@@ -15,7 +16,8 @@ export default async function ChecklistsPage() {
   ]);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+    <AppShell>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
       <PageHeader
         title="Checklist Templates"
         description="แม่แบบงานหลักของแต่ละประเภทธุรกิจสำหรับใช้ต่อยอดเป็นงานรายเดือน"
@@ -88,6 +90,7 @@ export default async function ChecklistsPage() {
           </div>
         )}
       </SectionCard>
-    </main>
+      </main>
+    </AppShell>
   );
 }

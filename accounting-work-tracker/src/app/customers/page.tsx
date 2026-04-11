@@ -1,3 +1,4 @@
+import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
@@ -23,7 +24,8 @@ export default async function CustomersPage() {
   ];
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+    <AppShell>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
       <PageHeader
         title="Customer Management"
         description="จัดการข้อมูลลูกค้าและประเภทธุรกิจสำหรับใช้ต่อยอดงานรายเดือน"
@@ -116,6 +118,7 @@ export default async function CustomersPage() {
           )}
         </SectionCard>
       </div>
-    </main>
+      </main>
+    </AppShell>
   );
 }
