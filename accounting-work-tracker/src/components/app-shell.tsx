@@ -21,7 +21,7 @@ export function AppShell({ children, role = "admin" }: AppShellProps) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex min-h-screen">
-        <aside className="hidden w-64 border-r border-slate-200 bg-white lg:block">
+        <aside className="w-64 border-r border-slate-200 bg-white shrink-0">
           <div className="border-b border-slate-200 px-6 py-5">
             <p className="text-sm font-medium text-blue-600">Accounting Work Tracker</p>
             <h1 className="mt-1 text-lg font-semibold">ระบบติดตามงานบัญชี</h1>
