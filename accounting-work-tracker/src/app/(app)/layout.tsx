@@ -6,7 +6,7 @@ export default async function AppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await requireSessionUser();
+  await requireSessionUser();
 
-  return <AppShell role={user.role}>{children}</AppShell>;
+  return <AppShell>{children}</AppShell>;
 }
