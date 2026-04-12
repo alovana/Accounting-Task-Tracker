@@ -5,6 +5,7 @@ import { WorkerCard } from './components/WorkerCard'
 import { WorkerDetails } from './components/WorkerDetails'
 import { scenarioPresets } from './mockData'
 import { statusMeta } from './statusMeta'
+import { useOfficeRuntime } from './hooks/useOfficeRuntime'
 import type { WorkerId, WorkerStatus } from './types'
 
 function App() {
@@ -12,7 +13,7 @@ function App() {
   const [selectedWorkerId, setSelectedWorkerId] = useState<WorkerId>('main')
   const [statusFilter, setStatusFilter] = useState<'all' | WorkerStatus>('all')
 
-  const scenario = scenarioPresets[scenarioId]
+  const { runtimeMode, setRuntimeMode, scenario } = useOfficeRuntime(scenarioId)
   const selectedWorker = scenario.workers.find((worker) => worker.id === selectedWorkerId) ?? scenario.workers[0]
 
   const statusSummary = useMemo(() => {
@@ -67,23 +68,44 @@ function App() {
       <section className="control-strip panel-card">
         <div>
           <p className="section-kicker">Scenario controls</p>
-          <h2>Mock runtime states</h2>
+          <h2>Runtime source and states</h2>
         </div>
-        <div className="scenario-tabs" role="tablist" aria-label="Runtime scenarios">
-          {Object.entries(scenarioPresets).map(([key, preset]) => (
+
+        <div className="control-actions">
+          <div className="runtime-toggle" role="tablist" aria-label="Select runtime source">
             <button
-              key={key}
               type="button"
-              className={`scenario-tab ${scenarioId === key ? 'active' : ''}`}
-              onClick={() => {
-                setScenarioId(key as keyof typeof scenarioPresets)
-                setSelectedWorkerId('main')
-                setStatusFilter('all')
-              }}
+              className={`scenario-tab ${runtimeMode === 'mock' ? 'active' : ''}`}
+              onClick={() => setRuntimeMode('mock')}
             >
-              {preset.label}
+              Mock mode
             </button>
-          ))}
+            <button
+              type="button"
+              className={`scenario-tab ${runtimeMode === 'gateway' ? 'active' : ''}`}
+              onClick={() => setRuntimeMode('gateway')}
+            >
+              Gateway mode
+            </button>
+          </div>
+
+          <div className="scenario-tabs" role="tablist" aria-label="Runtime scenarios">
+            {Object.entries(scenarioPresets).map(([key, preset]) => (
+              <button
+                key={key}
+                type="button"
+                className={`scenario-tab ${scenarioId === key ? 'active' : ''}`}
+                onClick={() => {
+                  setScenarioId(key as keyof typeof scenarioPresets)
+                  setSelectedWorkerId('main')
+                  setStatusFilter('all')
+                }}
+                disabled={runtimeMode === 'gateway'}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

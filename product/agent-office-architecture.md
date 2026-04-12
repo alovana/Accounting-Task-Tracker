@@ -29,10 +29,16 @@ Each worker should expose:
 ## Data Sources
 ### MVP
 - local mock state in frontend
+- typed scenario presets and timeline event mocks
+
+### Integration-ready layer
+- runtime adapter hook that can switch between mock mode and gateway mode
+- gateway snapshot adapter that maps live state into the dashboard worker/timeline model
 
 ### Later
 - OpenClaw session/task/subagent state
-- Optional polling or websocket feed
+- direct WebSocket or RPC-backed gateway feed
+- transient live handoff animations triggered from runtime events
 
 ## Main Interaction Model
 - `main` can delegate work to `vision` and `logic`

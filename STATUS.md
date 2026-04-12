@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: Agent Office
-- Current phase: structured MVP refinement
-- In progress: reusable components, typed mock runtime data, and logic-inspired UX polish
-- Last completed: added persona badges, status rings, timeline tags, and filter chips
-- Next steps: wire real OpenClaw runtime/session data and add transient handoff effects
+- Current phase: integration-ready runtime layer
+- In progress: mock/gateway runtime switching and adapter layer for live office state
+- Last completed: added runtime hook, gateway adapter stubs, and source toggle UI
+- Next steps: connect real Gateway WS/RPC data and map live events into workers and timeline
 - Human action needed: none
-- Last updated: 2026-04-12 23:30 ICT
+- Last updated: 2026-04-12 23:35 ICT
