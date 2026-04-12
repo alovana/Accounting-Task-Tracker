@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: Agent Office
-- Current phase: protocol-aware gateway client scaffolding
-- In progress: building WS request/response/event client around OpenClaw protocol envelopes
-- Last completed: added protocol types, WebSocket client scaffold, and connect/challenge groundwork
-- Next steps: implement authenticated operator connect flow and fetch real RPC state for worker mapping
+- Current phase: authenticated gateway integration planning
+- In progress: documenting the real browser-side device-auth requirement for Gateway mode
+- Last completed: validated that Gateway mode needs challenge signing and device identity, not just a plain WS connect
+- Next steps: implement browser Web Crypto device identity and real authenticated operator connect flow
 - Human action needed: none
-- Last updated: 2026-04-13 00:10 ICT
+- Last updated: 2026-04-13 00:12 ICT

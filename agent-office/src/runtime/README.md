@@ -26,5 +26,7 @@ This folder is the integration bridge between the dashboard UI and live OpenClaw
 ## Important note
 The current WebSocket client scaffold is intentionally incomplete for auth. OpenClaw requires challenge-based device auth during `connect`, so the next integration step is implementing a real authenticated operator connect flow that matches the Gateway protocol.
 
+That means the browser app will need device identity management, challenge signing, and device-token reuse. Until that exists, Gateway mode should be treated as integration-in-progress rather than live-connected.
+
 ## Why this layer exists
 The Gateway owns session and task truth. The dashboard should consume that truth through Gateway RPC/event streams instead of reading local files directly.
