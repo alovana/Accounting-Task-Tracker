@@ -54,6 +54,21 @@ export type GatewayEventEnvelope<T = unknown> = {
   stateVersion?: number
 }
 
+export type GatewayPresenceEntry = {
+  text?: string
+  ts: number
+  deviceId?: string
+  roles?: string[]
+  scopes?: string[]
+  platform?: string
+  deviceFamily?: string
+  version?: string
+  mode?: string
+  reason?: string
+  host?: string
+  instanceId?: string
+}
+
 export type GatewayHelloOk = {
   type: 'hello-ok'
   protocol: number
@@ -63,6 +78,15 @@ export type GatewayHelloOk = {
   features?: {
     methods?: string[]
     events?: string[]
+  }
+  snapshot?: {
+    presence?: GatewayPresenceEntry[]
+    sessionDefaults?: {
+      defaultAgentId?: string
+      mainKey?: string
+      mainSessionKey?: string
+      scope?: string
+    }
   }
   auth?: {
     deviceToken?: string
@@ -75,6 +99,9 @@ export type GatewayHelloOk = {
 export type GatewayConnectOptions = {
   clientId?: string
   clientVersion?: string
+  clientMode?: 'ui' | 'webchat' | 'cli' | 'backend' | 'test' | 'probe' | 'node'
+  platform?: string
+  deviceFamily?: string
   locale?: string
   userAgent?: string
   scopes?: string[]

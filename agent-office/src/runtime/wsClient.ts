@@ -63,22 +63,11 @@ export class GatewayWsClient {
     const challenge = await this.waitForChallenge()
     const device = await getOrCreateGatewayDeviceIdentity()
     const signedAt = Date.now()
+    const clientId = options.clientId ?? 'gateway-client'
+    const clientMode = options.clientMode ?? 'ui'
+    const platform = options.platform ?? 'web'
+    const deviceFamily = options.deviceFamily ?? 'browser'
     const requestedScopes = options.scopes ?? ['operator.read']
-    const challengePayload = buildChallengePayload({
-      nonce: challenge.nonce,
-      ts: challenge.ts,
-      signedAt,
-      publicKey: device.publicKey,
-      deviceId: device.id,
-    })
-    const signature = await device.signChallenge(challengePayload)
-
-    console.info('[Agent Office] Received Gateway challenge and prepared signed device handshake', {
-      deviceId: device.id,
-      signedAt,
-      protocolNote:
-        'Using the documented challenge nonce + signedAt fields. Preferred v3 payload details remain unverified in this workspace, so the signer stays conservative.',
-    })
 
     const auth: Record<string, string> = {}
 
@@ -94,14 +83,40 @@ export class GatewayWsClient {
       auth.deviceToken = options.deviceToken ?? device.token ?? ''
     }
 
+    const authTokenForSignature = auth.token ?? auth.password ?? auth.deviceToken
+    const challengePayload = buildChallengePayload({
+      deviceId: device.id,
+      clientId,
+      clientMode,
+      role: 'operator',
+      scopes: requestedScopes,
+      signedAtMs: signedAt,
+      token: authTokenForSignature,
+      nonce: challenge.nonce,
+      platform,
+      deviceFamily,
+    })
+    const signature = await device.signChallenge(challengePayload)
+
+    console.info('[Agent Office] Received Gateway challenge and prepared signed v3 device handshake', {
+      deviceId: device.id,
+      clientId,
+      clientMode,
+      platform,
+      deviceFamily,
+      signedAt,
+      signedPayloadVersion: 'v3',
+    })
+
     const response = await this.sendRequest<GatewayHelloOk>('connect', {
       minProtocol: 3,
       maxProtocol: 3,
       client: {
-        id: options.clientId ?? 'agent-office',
+        id: clientId,
         version: options.clientVersion ?? '0.0.0',
-        platform: 'web',
-        mode: 'operator',
+        platform,
+        deviceFamily,
+        mode: clientMode,
       },
       role: 'operator',
       scopes: requestedScopes,
@@ -111,8 +126,6 @@ export class GatewayWsClient {
       auth,
       locale: options.locale ?? 'en-US',
       userAgent: options.userAgent ?? 'agent-office/0.0.0',
-      platform: 'web',
-      deviceFamily: 'browser',
       device: {
         id: device.id,
         publicKey: device.publicKey,

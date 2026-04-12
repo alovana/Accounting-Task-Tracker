@@ -105,22 +105,63 @@ function persistDevice(device: PersistedGatewayDevice) {
   window.localStorage.setItem(DEVICE_STORAGE_KEY, JSON.stringify(device))
 }
 
-function challengePayloadToSign(input: { nonce: string; ts: number; signedAt: number; publicKey: string; deviceId: string }) {
-  return JSON.stringify({
-    nonce: input.nonce,
-    ts: input.ts,
-    signedAt: input.signedAt,
-    publicKey: input.publicKey,
-    deviceId: input.deviceId,
-  })
+function normalizeDeviceMetadataForAuth(value?: string | null) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return ''
+  }
+
+  return trimmed.replace(/[A-Z]/g, (char) => String.fromCharCode(char.charCodeAt(0) + 32))
+}
+
+function challengePayloadToSign(input: {
+  deviceId: string
+  clientId: string
+  clientMode: string
+  role: string
+  scopes: string[]
+  signedAtMs: number
+  token?: string | null
+  nonce: string
+  platform?: string | null
+  deviceFamily?: string | null
+}) {
+  const scopes = input.scopes.join(',')
+  const token = input.token ?? ''
+  const platform = normalizeDeviceMetadataForAuth(input.platform)
+  const deviceFamily = normalizeDeviceMetadataForAuth(input.deviceFamily)
+
+  return [
+    'v3',
+    input.deviceId,
+    input.clientId,
+    input.clientMode,
+    input.role,
+    scopes,
+    String(input.signedAtMs),
+    token,
+    input.nonce,
+    platform,
+    deviceFamily,
+  ].join('|')
 }
 
 export function buildChallengePayload(input: {
-  nonce: string
-  ts: number
-  signedAt: number
-  publicKey: string
   deviceId: string
+  clientId: string
+  clientMode: string
+  role: string
+  scopes: string[]
+  signedAtMs: number
+  token?: string | null
+  nonce: string
+  platform?: string | null
+  deviceFamily?: string | null
 }) {
   return challengePayloadToSign(input)
 }
