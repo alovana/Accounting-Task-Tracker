@@ -11,6 +11,8 @@
 - Add delegation animation from `main`
 - Add activity log
 - Improve visual state transitions
+- Add persona badges, status rings, and timeline filter chips
+- Refactor into reusable components and typed mock data modules
 
 ## Phase 3
 - Connect to live runtime/session/task data
