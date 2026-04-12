@@ -20,6 +20,13 @@
 
 Use `{{TASK}}` and `{{CONTEXT}}` as placeholders before spawning.
 
+## One-command examples
+- `subagents/templates/spawn-examples.md`
+
+Includes ready-to-copy PowerShell examples for:
+- inline spawn
+- template-based spawn
+
 ## Notes
 - These are workspace profiles for subagent spawning, not standalone OpenClaw agents.
 - Runtime model selection should be set when spawning the subagent.
