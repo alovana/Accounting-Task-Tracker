@@ -3,8 +3,10 @@
 This folder is the integration bridge between the dashboard UI and live OpenClaw Gateway data.
 
 ## Current state
+- `protocol.ts` defines the basic Gateway WS envelope shapes.
+- `wsClient.ts` provides a minimal WebSocket client scaffold with request/response and event waiting.
 - `gateway.ts` defines the transport contract and a placeholder WebSocket transport.
-- `adapters.ts` maps a gateway snapshot into the dashboard's worker and timeline model.
+- `adapters.ts` maps a gateway snapshot into the dashboard worker and timeline model.
 - `useOfficeRuntime` can switch between mock mode and gateway mode.
 
 ## Intended live data path
@@ -17,9 +19,12 @@ This folder is the integration bridge between the dashboard UI and live OpenClaw
 ## Good candidate Gateway surfaces
 - `sessions.list`
 - `sessions.get` / `sessions.preview`
-- task/background task state
+- background task state
 - `system-presence`
 - live event subscriptions for session/task changes
+
+## Important note
+The current WebSocket client scaffold is intentionally incomplete for auth. OpenClaw requires challenge-based device auth during `connect`, so the next integration step is implementing a real authenticated operator connect flow that matches the Gateway protocol.
 
 ## Why this layer exists
 The Gateway owns session and task truth. The dashboard should consume that truth through Gateway RPC/event streams instead of reading local files directly.

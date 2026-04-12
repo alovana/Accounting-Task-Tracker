@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: Agent Office
-- Current phase: gateway transport groundwork
-- In progress: preparing WS transport contract for live Gateway-driven office state
-- Last completed: added transport factory, runtime integration notes, and env example for Gateway URL
-- Next steps: implement actual Gateway RPC/WebSocket client and define task/session-to-worker mapping rules
+- Current phase: protocol-aware gateway client scaffolding
+- In progress: building WS request/response/event client around OpenClaw protocol envelopes
+- Last completed: added protocol types, WebSocket client scaffold, and connect/challenge groundwork
+- Next steps: implement authenticated operator connect flow and fetch real RPC state for worker mapping
 - Human action needed: none
-- Last updated: 2026-04-12 23:39 ICT
+- Last updated: 2026-04-13 00:10 ICT

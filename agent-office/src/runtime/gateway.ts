@@ -1,3 +1,5 @@
+import { GatewayWsClient } from './wsClient'
+
 export type GatewayWorkerSnapshot = {
   id: 'main' | 'vision' | 'logic'
   model?: string
@@ -42,17 +44,18 @@ class NoopGatewayTransport implements GatewayTransport {
 }
 
 class WebSocketGatewayTransport implements GatewayTransport {
-  private url: string
+  private client: GatewayWsClient
 
   constructor(url: string) {
-    this.url = url
+    this.client = new GatewayWsClient(url)
   }
 
   async connect() {
-    console.info('[Agent Office] Gateway transport placeholder ready for', this.url)
+    await this.client.connect()
   }
 
   async fetchOfficeSnapshot() {
+    console.info('[Agent Office] Gateway snapshot fetch is not wired to live RPC methods yet')
     return null
   }
 }

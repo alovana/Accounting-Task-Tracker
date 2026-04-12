@@ -18,6 +18,8 @@
 - Connect to live runtime/session/task data
 - Map real subagent runs to worker states
 - Add error and waiting states
+- Implement authenticated Gateway WS client flow
+- Translate Gateway RPC/event payloads into dashboard worker/timeline snapshots
 
 ## Phase 4
 - Polish visuals
