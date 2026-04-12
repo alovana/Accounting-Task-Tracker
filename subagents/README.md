@@ -14,6 +14,12 @@
 - Use for drafting code, refactoring, function design, and logic implementation
 - Rules: optimize for readability and maintainability, call out assumptions and edge cases, treat output as draft for main review
 
+## Spawn prompt templates
+- `subagents/templates/vision-spawn-prompt.md`
+- `subagents/templates/logic-spawn-prompt.md`
+
+Use `{{TASK}}` and `{{CONTEXT}}` as placeholders before spawning.
+
 ## Notes
 - These are workspace profiles for subagent spawning, not standalone OpenClaw agents.
 - Runtime model selection should be set when spawning the subagent.
