@@ -1,9 +1,9 @@
 # STATUS
 
-- Current project: accounting-work-tracker
-- Current phase: Phase 6 - Hardening and deployment prep complete
-- In progress: none
-- Last completed: role-access scaffold, readiness checklist, and deployment prep UI
-- Next steps: connect real auth enforcement and production deployment workflow
-- Human action needed: optional - configure Supabase env and run SQL schemas before production use
-- Last updated: 2026-04-05 15:31 ICT
+- Current project: OpenClaw specialist subagents
+- Current phase: defining reusable specialist profiles
+- In progress: adding subagent profile `vision`
+- Last completed: removed `gemini` and `minimax` from OpenClaw agents config
+- Next steps: add more subagent profiles and wire them into actual spawn prompts when needed
+- Human action needed: provide next subagent name and role details
+- Last updated: 2026-04-12 22:03 ICT
