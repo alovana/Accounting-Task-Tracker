@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: Agent Office
-- Current phase: MVP dashboard implementation
-- In progress: first office scene with main, vision, and logic worker states
-- Last completed: replaced Vite starter with Agent Office dashboard MVP UI
-- Next steps: add interactivity, real runtime data mapping, and richer animations
+- Current phase: interactive MVP dashboard
+- In progress: worker selection, scenario switching, and richer mock runtime states
+- Last completed: upgraded office scene with dynamic statuses, timeline, and side-panel details
+- Next steps: extract components, connect real OpenClaw runtime data, and refine visuals
 - Human action needed: none
-- Last updated: 2026-04-12 23:10 ICT
+- Last updated: 2026-04-12 23:13 ICT
