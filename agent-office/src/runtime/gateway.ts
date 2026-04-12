@@ -56,7 +56,7 @@ class WebSocketGatewayTransport implements GatewayTransport {
 
   async fetchOfficeSnapshot() {
     try {
-      await this.client.connectAsOperator({
+      const hello = await this.client.connectAsOperator({
         clientId: 'agent-office',
         clientVersion: '0.0.0',
         scopes: ['operator.read'],
@@ -64,7 +64,14 @@ class WebSocketGatewayTransport implements GatewayTransport {
         userAgent: navigator.userAgent,
       })
 
-      console.info('[Agent Office] Gateway auth scaffold connected, but live snapshot RPC mapping is still pending')
+      console.info('[Agent Office] Gateway auth scaffold connected, but live snapshot RPC mapping is still pending', {
+        discoveredMethods: hello.features?.methods?.filter((method) =>
+          ['sessions.list', 'sessions.preview', 'sessions.get', 'system-presence', 'sessions.subscribe'].includes(method),
+        ),
+        discoveredEvents: hello.features?.events?.filter((event) =>
+          ['sessions.changed', 'session.message', 'presence', 'chat'].includes(event),
+        ),
+      })
       return null
     } catch (error) {
       console.warn('[Agent Office] Gateway auth scaffold failed, falling back to mock snapshot', error)

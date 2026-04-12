@@ -3,6 +3,7 @@ import type {
   GatewayChallengePayload,
   GatewayConnectOptions,
   GatewayEnvelope,
+  GatewayErrorResponse,
   GatewayHelloOk,
   GatewayRequest,
   GatewaySuccessResponse,
@@ -62,6 +63,7 @@ export class GatewayWsClient {
     const challenge = await this.waitForChallenge()
     const device = await getOrCreateGatewayDeviceIdentity()
     const signedAt = Date.now()
+    const requestedScopes = options.scopes ?? ['operator.read']
     const challengePayload = buildChallengePayload({
       nonce: challenge.nonce,
       ts: challenge.ts,
@@ -74,7 +76,23 @@ export class GatewayWsClient {
     console.info('[Agent Office] Received Gateway challenge and prepared signed device handshake', {
       deviceId: device.id,
       signedAt,
+      protocolNote:
+        'Using the documented challenge nonce + signedAt fields. Preferred v3 payload details remain unverified in this workspace, so the signer stays conservative.',
     })
+
+    const auth: Record<string, string> = {}
+
+    if (options.gatewayToken) {
+      auth.token = options.gatewayToken
+    }
+
+    if (options.gatewayPassword) {
+      auth.password = options.gatewayPassword
+    }
+
+    if (options.deviceToken ?? device.token) {
+      auth.deviceToken = options.deviceToken ?? device.token ?? ''
+    }
 
     const response = await this.sendRequest<GatewayHelloOk>('connect', {
       minProtocol: 3,
@@ -86,13 +104,15 @@ export class GatewayWsClient {
         mode: 'operator',
       },
       role: 'operator',
-      scopes: options.scopes ?? ['operator.read'],
+      scopes: requestedScopes,
       caps: [],
       commands: [],
       permissions: {},
-      auth: options.deviceToken || device.token ? { deviceToken: options.deviceToken ?? device.token } : {},
+      auth,
       locale: options.locale ?? 'en-US',
       userAgent: options.userAgent ?? 'agent-office/0.0.0',
+      platform: 'web',
+      deviceFamily: 'browser',
       device: {
         id: device.id,
         publicKey: device.publicKey,
@@ -122,7 +142,10 @@ export class GatewayWsClient {
         this.socket?.removeEventListener('message', handleMessage)
 
         if (!envelope.ok) {
-          reject(new Error(envelope.error.message ?? 'Gateway request failed'))
+          const error = envelope as GatewayErrorResponse
+          const detailsCode = error.error.details?.code
+          const message = error.error.message ?? 'Gateway request failed'
+          reject(new Error(detailsCode ? `${message} (${detailsCode})` : message))
           return
         }
 

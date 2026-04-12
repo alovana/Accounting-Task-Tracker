@@ -9,6 +9,12 @@ export type GatewayChallengeEvent = {
   payload: GatewayChallengePayload
 }
 
+export type GatewayDeviceTokenGrant = {
+  deviceToken: string
+  role: string
+  scopes: string[]
+}
+
 export type GatewayRequest = {
   type: 'req'
   id: string
@@ -30,7 +36,13 @@ export type GatewayErrorResponse = {
   error: {
     message?: string
     code?: string
-    details?: Record<string, unknown>
+    details?: {
+      code?: string
+      reason?: string
+      canRetryWithDeviceToken?: boolean
+      recommendedNextStep?: string
+      [key: string]: unknown
+    }
   }
 }
 
@@ -54,6 +66,7 @@ export type GatewayHelloOk = {
   }
   auth?: {
     deviceToken?: string
+    deviceTokens?: GatewayDeviceTokenGrant[]
     role?: string
     scopes?: string[]
   }
@@ -65,6 +78,8 @@ export type GatewayConnectOptions = {
   locale?: string
   userAgent?: string
   scopes?: string[]
+  gatewayToken?: string
+  gatewayPassword?: string
   deviceToken?: string
 }
 
