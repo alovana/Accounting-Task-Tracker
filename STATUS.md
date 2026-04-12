@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: Agent Office
-- Current phase: project setup and MVP planning
-- In progress: scaffold frontend app and define MVP product docs
-- Last completed: created subagent spawn examples for vision and logic
-- Next steps: install dependencies, create dashboard UI scaffold, and build the first office scene
+- Current phase: MVP dashboard implementation
+- In progress: first office scene with main, vision, and logic worker states
+- Last completed: replaced Vite starter with Agent Office dashboard MVP UI
+- Next steps: add interactivity, real runtime data mapping, and richer animations
 - Human action needed: none
-- Last updated: 2026-04-12 23:08 ICT
+- Last updated: 2026-04-12 23:10 ICT
