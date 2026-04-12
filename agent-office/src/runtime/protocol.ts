@@ -1,10 +1,12 @@
+export type GatewayChallengePayload = {
+  nonce: string
+  ts: number
+}
+
 export type GatewayChallengeEvent = {
   type: 'event'
   event: 'connect.challenge'
-  payload: {
-    nonce: string
-    ts: number
-  }
+  payload: GatewayChallengePayload
 }
 
 export type GatewayRequest = {
@@ -55,6 +57,15 @@ export type GatewayHelloOk = {
     role?: string
     scopes?: string[]
   }
+}
+
+export type GatewayConnectOptions = {
+  clientId?: string
+  clientVersion?: string
+  locale?: string
+  userAgent?: string
+  scopes?: string[]
+  deviceToken?: string
 }
 
 export type GatewayEnvelope<T = unknown> =

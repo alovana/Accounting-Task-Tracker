@@ -1,4 +1,12 @@
-import type { GatewayEnvelope, GatewayHelloOk, GatewayRequest, GatewaySuccessResponse } from './protocol'
+import { buildChallengePayload, getOrCreateGatewayDeviceIdentity } from './deviceAuth'
+import type {
+  GatewayChallengePayload,
+  GatewayConnectOptions,
+  GatewayEnvelope,
+  GatewayHelloOk,
+  GatewayRequest,
+  GatewaySuccessResponse,
+} from './protocol'
 
 function createRequestId() {
   return `req_${Math.random().toString(36).slice(2, 10)}`
@@ -29,7 +37,7 @@ export class GatewayWsClient {
   }
 
   async waitForChallenge() {
-    return this.waitForEvent<{ nonce: string; ts: number }>('connect.challenge')
+    return this.waitForEvent<GatewayChallengePayload>('connect.challenge')
   }
 
   async sendRequest<T = unknown>(method: string, params: Record<string, unknown>) {
@@ -50,36 +58,56 @@ export class GatewayWsClient {
     return this.waitForResponse<T>(id)
   }
 
-  async connectAsOperatorPlaceholder() {
+  async connectAsOperator(options: GatewayConnectOptions = {}) {
     const challenge = await this.waitForChallenge()
+    const device = await getOrCreateGatewayDeviceIdentity()
+    const signedAt = Date.now()
+    const challengePayload = buildChallengePayload({
+      nonce: challenge.nonce,
+      ts: challenge.ts,
+      signedAt,
+      publicKey: device.publicKey,
+      deviceId: device.id,
+    })
+    const signature = await device.signChallenge(challengePayload)
 
-    console.info('[Agent Office] Received Gateway challenge', challenge)
+    console.info('[Agent Office] Received Gateway challenge and prepared signed device handshake', {
+      deviceId: device.id,
+      signedAt,
+    })
 
-    return this.sendRequest<GatewayHelloOk>('connect', {
+    const response = await this.sendRequest<GatewayHelloOk>('connect', {
       minProtocol: 3,
       maxProtocol: 3,
       client: {
-        id: 'agent-office',
-        version: '0.0.0',
+        id: options.clientId ?? 'agent-office',
+        version: options.clientVersion ?? '0.0.0',
         platform: 'web',
         mode: 'operator',
       },
       role: 'operator',
-      scopes: ['operator.read'],
+      scopes: options.scopes ?? ['operator.read'],
       caps: [],
       commands: [],
       permissions: {},
-      auth: {},
-      locale: 'en-US',
-      userAgent: 'agent-office/0.0.0',
+      auth: options.deviceToken || device.token ? { deviceToken: options.deviceToken ?? device.token } : {},
+      locale: options.locale ?? 'en-US',
+      userAgent: options.userAgent ?? 'agent-office/0.0.0',
       device: {
-        id: 'agent-office-placeholder-device',
-        publicKey: 'placeholder',
-        signature: 'placeholder',
-        signedAt: Date.now(),
-        nonce: typeof challenge === 'object' && challenge && 'nonce' in challenge ? challenge.nonce : '',
+        id: device.id,
+        publicKey: device.publicKey,
+        signature,
+        signedAt,
+        nonce: challenge.nonce,
       },
     })
+
+    await device.saveIssuedToken(response.auth?.deviceToken, {
+      scopes: response.auth?.scopes,
+      role: response.auth?.role,
+    })
+
+    return response
   }
 
   private waitForResponse<T>(requestId: string) {

@@ -55,8 +55,21 @@ class WebSocketGatewayTransport implements GatewayTransport {
   }
 
   async fetchOfficeSnapshot() {
-    console.info('[Agent Office] Gateway snapshot fetch is not wired to live RPC methods yet')
-    return null
+    try {
+      await this.client.connectAsOperator({
+        clientId: 'agent-office',
+        clientVersion: '0.0.0',
+        scopes: ['operator.read'],
+        locale: navigator.language,
+        userAgent: navigator.userAgent,
+      })
+
+      console.info('[Agent Office] Gateway auth scaffold connected, but live snapshot RPC mapping is still pending')
+      return null
+    } catch (error) {
+      console.warn('[Agent Office] Gateway auth scaffold failed, falling back to mock snapshot', error)
+      return null
+    }
   }
 }
 

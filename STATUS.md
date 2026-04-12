@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: Agent Office
-- Current phase: authenticated gateway integration planning
-- In progress: documenting the real browser-side device-auth requirement for Gateway mode
-- Last completed: validated that Gateway mode needs challenge signing and device identity, not just a plain WS connect
-- Next steps: implement browser Web Crypto device identity and real authenticated operator connect flow
+- Current phase: browser-side gateway auth scaffolding
+- In progress: wiring persisted device identity and signed operator-connect flow into Gateway mode
+- Last completed: added browser-side device auth helper and connected it to the WebSocket client scaffold
+- Next steps: verify signed payload shape against a real Gateway and map live RPC state into office workers
 - Human action needed: none
-- Last updated: 2026-04-13 00:12 ICT
+- Last updated: 2026-04-13 00:16 ICT
