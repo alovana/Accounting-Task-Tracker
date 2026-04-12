@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { scenarioPresets } from '../mockData'
 import type { ScenarioPreset } from '../types'
 import { buildScenarioFromGateway } from '../runtime/adapters'
-import { fetchGatewayOfficeSnapshot } from '../runtime/gateway'
+import { createGatewayTransport } from '../runtime/gateway'
 
 type RuntimeMode = 'mock' | 'gateway'
 
@@ -18,7 +18,10 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
         return
       }
 
-      const snapshot = await fetchGatewayOfficeSnapshot()
+      const transport = createGatewayTransport()
+      await transport.connect()
+      const snapshot = await transport.fetchOfficeSnapshot()
+
       if (!cancelled) {
         setGatewayScenario(buildScenarioFromGateway(snapshot))
       }

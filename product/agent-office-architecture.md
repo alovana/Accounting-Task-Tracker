@@ -39,6 +39,7 @@ Each worker should expose:
 - OpenClaw session/task/subagent state
 - direct WebSocket or RPC-backed gateway feed
 - transient live handoff animations triggered from runtime events
+- task/session aggregation rules that map live Gateway truth into `main`, `vision`, and `logic` worker cards
 
 ## Main Interaction Model
 - `main` can delegate work to `vision` and `logic`

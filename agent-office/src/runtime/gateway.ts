@@ -26,6 +26,43 @@ export type GatewayOfficeSnapshot = {
   timeline?: GatewayTimelineSnapshot[]
 }
 
-export async function fetchGatewayOfficeSnapshot(): Promise<GatewayOfficeSnapshot | null> {
-  return null
+export type GatewayTransport = {
+  connect: () => Promise<void>
+  fetchOfficeSnapshot: () => Promise<GatewayOfficeSnapshot | null>
+}
+
+class NoopGatewayTransport implements GatewayTransport {
+  async connect() {
+    return
+  }
+
+  async fetchOfficeSnapshot() {
+    return null
+  }
+}
+
+class WebSocketGatewayTransport implements GatewayTransport {
+  private url: string
+
+  constructor(url: string) {
+    this.url = url
+  }
+
+  async connect() {
+    console.info('[Agent Office] Gateway transport placeholder ready for', this.url)
+  }
+
+  async fetchOfficeSnapshot() {
+    return null
+  }
+}
+
+export function createGatewayTransport() {
+  const gatewayUrl = import.meta.env.VITE_OPENCLAW_GATEWAY_URL
+
+  if (!gatewayUrl) {
+    return new NoopGatewayTransport()
+  }
+
+  return new WebSocketGatewayTransport(gatewayUrl)
 }
