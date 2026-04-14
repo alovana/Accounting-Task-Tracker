@@ -6,9 +6,10 @@ This folder is the integration bridge between the dashboard UI and live OpenClaw
 - `protocol.ts` defines the basic Gateway WS envelope shapes, `hello-ok.snapshot/auth` fields, and auth error hints.
 - `deviceAuth.ts` provides browser-side device identity generation, persistence, and the verified v3 signing payload builder.
 - `wsClient.ts` provides a minimal WebSocket client scaffold with request/response, event waiting, and signed operator-connect scaffolding.
-- `gateway.ts` now performs a first real read-only snapshot fetch via `system-presence` plus `sessions.list`, and plumbs optional shared-secret auth from Vite env config.
+- `gateway.ts` now performs a first real read-only snapshot fetch via `system-presence` plus `sessions.list`, plumbs optional shared-secret auth from Vite env config, and exposes transport cleanup so the UI can release sockets on teardown.
 - `adapters.ts` maps a gateway snapshot into the dashboard worker and timeline model.
 - `useOfficeRuntime` can switch between mock mode and gateway mode.
+- gateway polling is serialized with `setTimeout` and reuses one transport per gateway-mode lifecycle, which avoids overlapping refreshes and orphaned WebSocket connections during future live integration work.
 - local-first worker inference now merges presence with conservative session heuristics (`label`, `status`, `summary`, `task`) so the dashboard can estimate queue depth and worker state without extra model work.
 
 ## Intended live data path

@@ -17,21 +17,19 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
 
   useEffect(() => {
     let cancelled = false
-    let intervalId: number | null = null
+    let timeoutId: number | null = null
+    const transport = runtimeMode === 'gateway' ? createGatewayTransport() : null
 
     async function loadGatewaySnapshot() {
-      if (runtimeMode !== 'gateway') {
+      if (runtimeMode !== 'gateway' || !transport || cancelled) {
         return
       }
 
-      if (!cancelled) {
-        setRuntimeStatus({
-          connection: 'connecting',
-          detail: 'Connecting to Gateway and requesting a live operator snapshot...',
-        })
-      }
-
-      const transport = createGatewayTransport()
+      setRuntimeStatus((current) => ({
+        connection: current.lastUpdatedAt ? current.connection : 'connecting',
+        detail: 'Connecting to Gateway and requesting a live operator snapshot...',
+        lastUpdatedAt: current.lastUpdatedAt,
+      }))
 
       try {
         await transport.connect()
@@ -63,23 +61,25 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
             lastUpdatedAt: Date.now(),
           })
         }
+      } finally {
+        if (!cancelled) {
+          timeoutId = window.setTimeout(() => {
+            void loadGatewaySnapshot()
+          }, 30000)
+        }
       }
     }
 
     void loadGatewaySnapshot()
 
-    if (runtimeMode === 'gateway') {
-      intervalId = window.setInterval(() => {
-        void loadGatewaySnapshot()
-      }, 30000)
-    }
-
     return () => {
       cancelled = true
 
-      if (intervalId !== null) {
-        window.clearInterval(intervalId)
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId)
       }
+
+      transport?.disconnect()
     }
   }, [runtimeMode])
 

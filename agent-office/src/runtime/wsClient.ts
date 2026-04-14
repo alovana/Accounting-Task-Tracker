@@ -103,6 +103,16 @@ export class GatewayWsClient {
       return
     }
 
+    if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
+      await new Promise<void>((resolve, reject) => {
+        this.socket?.addEventListener('open', () => resolve(), { once: true })
+        this.socket?.addEventListener('error', () => reject(new Error('Failed to open Gateway WebSocket')), {
+          once: true,
+        })
+      })
+      return
+    }
+
     await new Promise<void>((resolve, reject) => {
       const socket = new WebSocket(this.url)
       this.socket = socket
@@ -111,7 +121,25 @@ export class GatewayWsClient {
       socket.addEventListener('error', () => reject(new Error('Failed to open Gateway WebSocket')), {
         once: true,
       })
+      socket.addEventListener('close', () => {
+        if (this.socket === socket) {
+          this.socket = null
+        }
+      })
     })
+  }
+
+  disconnect() {
+    if (!this.socket) {
+      return
+    }
+
+    const socket = this.socket
+    this.socket = null
+
+    if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+      socket.close()
+    }
   }
 
   async waitForChallenge() {

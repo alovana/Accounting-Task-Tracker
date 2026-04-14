@@ -62,6 +62,7 @@ type GatewaySessionListResult = {
 export type GatewayTransport = {
   connect: () => Promise<void>
   fetchOfficeSnapshot: () => Promise<GatewayOfficeSnapshot | null>
+  disconnect: () => void
 }
 
 function formatRelativeTime(timestampMs?: number) {
@@ -161,6 +162,10 @@ class NoopGatewayTransport implements GatewayTransport {
   async fetchOfficeSnapshot() {
     return null
   }
+
+  disconnect() {
+    return
+  }
 }
 
 class WebSocketGatewayTransport implements GatewayTransport {
@@ -172,6 +177,10 @@ class WebSocketGatewayTransport implements GatewayTransport {
 
   async connect() {
     await this.client.connect()
+  }
+
+  disconnect() {
+    this.client.disconnect()
   }
 
   async fetchOfficeSnapshot() {
