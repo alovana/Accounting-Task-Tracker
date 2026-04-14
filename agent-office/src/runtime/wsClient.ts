@@ -93,6 +93,7 @@ function shouldRetryConnectWithDeviceToken(error: unknown, authMode: GatewayAuth
 export class GatewayWsClient {
   private socket: WebSocket | null = null
   private url: string
+  private eventListeners = new Map<string, Set<(payload: unknown, envelope: GatewayEnvelope<unknown>) => void>>()
 
   constructor(url: string) {
     this.url = url
@@ -121,7 +122,10 @@ export class GatewayWsClient {
       socket.addEventListener('error', () => reject(new Error('Failed to open Gateway WebSocket')), {
         once: true,
       })
+      socket.addEventListener('message', this.handleSocketMessage)
       socket.addEventListener('close', () => {
+        socket.removeEventListener('message', this.handleSocketMessage)
+
         if (this.socket === socket) {
           this.socket = null
         }
@@ -162,6 +166,27 @@ export class GatewayWsClient {
     this.socket.send(JSON.stringify(request))
 
     return this.waitForResponse<T>(id)
+  }
+
+  onEvent<T>(eventName: string, listener: (payload: T, envelope: GatewayEnvelope<T>) => void) {
+    const listeners = this.eventListeners.get(eventName) ?? new Set()
+    const wrapped = listener as (payload: unknown, envelope: GatewayEnvelope<unknown>) => void
+    listeners.add(wrapped)
+    this.eventListeners.set(eventName, listeners)
+
+    return () => {
+      const current = this.eventListeners.get(eventName)
+
+      if (!current) {
+        return
+      }
+
+      current.delete(wrapped)
+
+      if (current.size === 0) {
+        this.eventListeners.delete(eventName)
+      }
+    }
   }
 
   async connectAsOperator(options: GatewayConnectOptions = {}) {
@@ -265,6 +290,24 @@ export class GatewayWsClient {
           'shared-secret-rejected-retrying-with-device-token',
         )
       ).response
+    }
+  }
+
+  private handleSocketMessage = (event: MessageEvent<string>) => {
+    const envelope = JSON.parse(event.data) as GatewayEnvelope<unknown>
+
+    if (envelope.type !== 'event') {
+      return
+    }
+
+    const listeners = this.eventListeners.get(envelope.event)
+
+    if (!listeners?.size) {
+      return
+    }
+
+    for (const listener of listeners) {
+      listener(envelope.payload, envelope)
     }
   }
 

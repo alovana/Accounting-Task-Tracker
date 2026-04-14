@@ -59,9 +59,15 @@ type GatewaySessionListResult = {
   sessions?: GatewaySessionListItem[]
 }
 
+export type GatewayLiveUpdate = {
+  snapshot: GatewayOfficeSnapshot | null
+  runtimeStatus: RuntimeStatus
+}
+
 export type GatewayTransport = {
   connect: () => Promise<void>
   fetchOfficeSnapshot: () => Promise<GatewayOfficeSnapshot | null>
+  subscribeToUpdates: (listener: (update: GatewayLiveUpdate) => void) => () => void
   disconnect: () => void
 }
 
@@ -163,6 +169,10 @@ class NoopGatewayTransport implements GatewayTransport {
     return null
   }
 
+  subscribeToUpdates() {
+    return () => undefined
+  }
+
   disconnect() {
     return
   }
@@ -170,6 +180,12 @@ class NoopGatewayTransport implements GatewayTransport {
 
 class WebSocketGatewayTransport implements GatewayTransport {
   private client: GatewayWsClient
+  private helloConnected = false
+  private presenceEntries: GatewayPresenceEntry[] = []
+  private sessionList: GatewaySessionListResult = { sessions: [] }
+  private listeners = new Set<(update: GatewayLiveUpdate) => void>()
+  private unsubscribeCallbacks: Array<() => void> = []
+  private refreshPromise: Promise<GatewayOfficeSnapshot | null> | null = null
 
   constructor(url: string) {
     this.client = new GatewayWsClient(url)
@@ -179,54 +195,160 @@ class WebSocketGatewayTransport implements GatewayTransport {
     await this.client.connect()
   }
 
+  subscribeToUpdates(listener: (update: GatewayLiveUpdate) => void) {
+    this.listeners.add(listener)
+
+    if (this.unsubscribeCallbacks.length === 0) {
+      this.unsubscribeCallbacks = [
+        this.client.onEvent<GatewayPresenceEntry[] | GatewayPresenceEntry>('presence', (payload) => {
+          this.handlePresenceEvent(payload)
+        }),
+        this.client.onEvent('sessions.changed', () => {
+          void this.refreshSnapshot('Gateway session change event received, refreshing snapshot...')
+        }),
+        this.client.onEvent('session.message', () => {
+          void this.refreshSnapshot('Gateway message event received, refreshing snapshot...')
+        }),
+        this.client.onEvent('chat', () => {
+          void this.refreshSnapshot('Gateway chat event received, refreshing snapshot...')
+        }),
+      ]
+    }
+
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
   disconnect() {
+    for (const unsubscribe of this.unsubscribeCallbacks) {
+      unsubscribe()
+    }
+
+    this.unsubscribeCallbacks = []
+    this.listeners.clear()
     this.client.disconnect()
   }
 
   async fetchOfficeSnapshot() {
-    try {
-      const hello = await this.client.connectAsOperator(
-        resolveGatewayConnectOptions({
-          clientId: 'gateway-client',
-          clientMode: 'ui',
-          clientVersion: '0.0.0',
-          platform: 'web',
-          deviceFamily: 'browser',
-          scopes: ['operator.read'],
-          locale: navigator.language,
-          userAgent: navigator.userAgent,
-        }),
-      )
+    return this.refreshSnapshot('Live Gateway data mapped into office workers.')
+  }
 
-      const [presenceResult, sessionListResult] = await Promise.all([
-        this.client.sendRequest<GatewayPresenceEntry[]>('system-presence', {}),
-        this.client.sendRequest<GatewaySessionListResult>('sessions.list', {
-          includeGlobal: true,
-          includeUnknown: true,
-          limit: 50,
-        }),
-      ])
+  private emitUpdate(runtimeStatus: RuntimeStatus) {
+    const snapshot = buildOfficeSnapshot(this.presenceEntries, this.sessionList, runtimeStatus)
 
-      console.info('[Agent Office] Gateway live snapshot loaded', {
-        discoveredMethods: hello.features?.methods?.filter((method) =>
-          ['sessions.list', 'sessions.preview', 'sessions.get', 'system-presence', 'sessions.subscribe'].includes(method),
-        ),
-        discoveredEvents: hello.features?.events?.filter((event) =>
-          ['sessions.changed', 'session.message', 'presence', 'chat'].includes(event),
-        ),
-        presenceCount: presenceResult.length,
-        sessionCount: sessionListResult.sessions?.length ?? 0,
-      })
-
-      return buildOfficeSnapshot(presenceResult, sessionListResult, {
-        connection: 'live',
-        detail: 'Live Gateway data mapped into office workers.',
-        lastUpdatedAt: Date.now(),
-      })
-    } catch (error) {
-      console.warn('[Agent Office] Gateway snapshot fetch failed, falling back to mock snapshot', error)
-      return null
+    for (const listener of this.listeners) {
+      listener({ snapshot, runtimeStatus })
     }
+
+    return snapshot
+  }
+
+  private handlePresenceEvent(payload: GatewayPresenceEntry[] | GatewayPresenceEntry) {
+    const nextEntries = Array.isArray(payload) ? payload : [payload]
+
+    if (!nextEntries.length) {
+      return
+    }
+
+    const byIdentity = new Map<string, GatewayPresenceEntry>()
+
+    for (const entry of this.presenceEntries) {
+      byIdentity.set(this.getPresenceIdentity(entry), entry)
+    }
+
+    for (const entry of nextEntries) {
+      byIdentity.set(this.getPresenceIdentity(entry), entry)
+    }
+
+    this.presenceEntries = Array.from(byIdentity.values()).sort((left, right) => (right.ts ?? 0) - (left.ts ?? 0))
+    this.emitUpdate({
+      connection: 'live',
+      detail: 'Gateway presence event received and applied to the office view.',
+      lastUpdatedAt: Date.now(),
+    })
+  }
+
+  private getPresenceIdentity(entry: GatewayPresenceEntry) {
+    return [entry.deviceId, entry.instanceId, entry.host, entry.text, entry.reason].filter(Boolean).join(':') || `ts:${entry.ts}`
+  }
+
+  private async ensureOperatorHello() {
+    if (this.helloConnected) {
+      return
+    }
+
+    const hello = await this.client.connectAsOperator(
+      resolveGatewayConnectOptions({
+        clientId: 'gateway-client',
+        clientMode: 'ui',
+        clientVersion: '0.0.0',
+        platform: 'web',
+        deviceFamily: 'browser',
+        scopes: ['operator.read'],
+        locale: navigator.language,
+        userAgent: navigator.userAgent,
+      }),
+    )
+
+    this.helloConnected = true
+
+    console.info('[Agent Office] Gateway operator connection established', {
+      discoveredMethods: hello.features?.methods?.filter((method) =>
+        ['sessions.list', 'sessions.preview', 'sessions.get', 'system-presence', 'sessions.subscribe'].includes(method),
+      ),
+      discoveredEvents: hello.features?.events?.filter((event) =>
+        ['sessions.changed', 'session.message', 'presence', 'chat'].includes(event),
+      ),
+    })
+  }
+
+  private async refreshSnapshot(detail: string) {
+    if (this.refreshPromise) {
+      return this.refreshPromise
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        await this.ensureOperatorHello()
+
+        const [presenceResult, sessionListResult] = await Promise.all([
+          this.client.sendRequest<GatewayPresenceEntry[]>('system-presence', {}),
+          this.client.sendRequest<GatewaySessionListResult>('sessions.list', {
+            includeGlobal: true,
+            includeUnknown: true,
+            limit: 50,
+          }),
+        ])
+
+        this.presenceEntries = presenceResult
+        this.sessionList = sessionListResult
+
+        return this.emitUpdate({
+          connection: 'live',
+          detail,
+          lastUpdatedAt: Date.now(),
+        })
+      } catch (error) {
+        console.warn('[Agent Office] Gateway snapshot fetch failed, falling back to mock snapshot', error)
+
+        const runtimeStatus: RuntimeStatus = {
+          connection: 'fallback',
+          detail: 'Gateway returned no usable office snapshot, showing local fallback scene.',
+          lastUpdatedAt: Date.now(),
+        }
+
+        for (const listener of this.listeners) {
+          listener({ snapshot: null, runtimeStatus })
+        }
+
+        return null
+      } finally {
+        this.refreshPromise = null
+      }
+    })()
+
+    return this.refreshPromise
   }
 }
 

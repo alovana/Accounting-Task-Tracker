@@ -18,6 +18,7 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
   useEffect(() => {
     let cancelled = false
     let timeoutId: number | null = null
+    let unsubscribeFromUpdates: (() => void) | null = null
     const transport = runtimeMode === 'gateway' ? createGatewayTransport() : null
 
     async function loadGatewaySnapshot() {
@@ -33,6 +34,14 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
 
       try {
         await transport.connect()
+        unsubscribeFromUpdates = transport.subscribeToUpdates(({ snapshot, runtimeStatus: nextRuntimeStatus }) => {
+          if (cancelled) {
+            return
+          }
+
+          setGatewayScenario(buildScenarioFromGateway(snapshot))
+          setRuntimeStatus(nextRuntimeStatus)
+        })
         const snapshot = await transport.fetchOfficeSnapshot()
 
         if (!cancelled) {
@@ -51,6 +60,7 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
                 },
           )
         }
+
       } catch (error) {
         if (!cancelled) {
           console.warn('[Agent Office] Failed to load Gateway snapshot', error)
@@ -79,6 +89,7 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
         window.clearTimeout(timeoutId)
       }
 
+      unsubscribeFromUpdates?.()
       transport?.disconnect()
     }
   }, [runtimeMode])
