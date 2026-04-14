@@ -63,6 +63,10 @@ export const scenarioPresets: Record<string, ScenarioPreset> = {
         },
       },
     ],
+    monitoring: {
+      source: 'mock',
+      lastUpdatedLabel: 'local preset',
+    },
     timeline: [
       {
         id: 1,
@@ -157,6 +161,10 @@ export const scenarioPresets: Record<string, ScenarioPreset> = {
         },
       },
     ],
+    monitoring: {
+      source: 'mock',
+      lastUpdatedLabel: 'local preset',
+    },
     timeline: [
       {
         id: 1,
@@ -251,6 +259,10 @@ export const scenarioPresets: Record<string, ScenarioPreset> = {
         },
       },
     ],
+    monitoring: {
+      source: 'mock',
+      lastUpdatedLabel: 'local preset',
+    },
     timeline: [
       {
         id: 1,

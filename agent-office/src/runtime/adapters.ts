@@ -22,6 +22,7 @@ export function buildScenarioFromGateway(snapshot: GatewayOfficeSnapshot | null)
       energy: energyFromStatus(incoming?.status ?? worker.status),
       duration: durationFromStatus(incoming?.status ?? worker.status, incoming?.lastActiveLabel ?? worker.lastActiveLabel),
       lastActiveLabel: incoming?.lastActiveLabel ?? worker.lastActiveLabel,
+      monitoring: incoming?.monitoring ?? { source: 'mock' },
     }
   })
 
@@ -43,5 +44,6 @@ export function buildScenarioFromGateway(snapshot: GatewayOfficeSnapshot | null)
     delegation: snapshot.delegation ?? fallback.delegation,
     workers,
     timeline,
+    monitoring: snapshot.monitoring ?? { source: 'mock' },
   }
 }

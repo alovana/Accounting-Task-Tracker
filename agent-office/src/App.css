@@ -72,6 +72,15 @@
   background: linear-gradient(135deg, rgba(124, 92, 255, 0.16), rgba(79, 193, 255, 0.12));
 }
 
+.telemetry-card {
+  background: linear-gradient(135deg, rgba(79, 193, 255, 0.14), rgba(124, 92, 255, 0.08));
+}
+
+.runtime-updated {
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+
 .control-strip {
   display: flex;
   justify-content: space-between;
@@ -560,6 +569,40 @@
   color: var(--text-strong);
 }
 
+.monitoring-section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.monitoring-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.monitoring-grid div {
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+}
+
+.monitoring-grid span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-soft);
+}
+
+.monitoring-grid strong {
+  color: var(--text-strong);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .activity-list {
   list-style: none;
   padding: 0;
@@ -776,5 +819,9 @@
   .timeline-heading {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .monitoring-grid {
+    grid-template-columns: 1fr;
   }
 }

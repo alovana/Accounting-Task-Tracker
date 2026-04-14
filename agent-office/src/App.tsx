@@ -41,6 +41,10 @@ function App() {
   }, [scenario.timeline, scenario.workers, statusFilter])
 
   const statusFilterOptions: Array<'all' | WorkerStatus> = ['all', 'working', 'idle', 'sleeping', 'waiting', 'blocked', 'done']
+  const monitoringSummary =
+    scenario.monitoring?.source === 'gateway'
+      ? `${scenario.monitoring.sessionCount ?? 0} sessions, ${scenario.monitoring.presenceCount ?? 0} presence signals`
+      : 'Preset scene, no live Gateway signals'
 
   return (
     <main className="app-shell">
@@ -62,6 +66,11 @@ function App() {
             <span className="summary-label">Workers online</span>
             <strong>{scenario.workers.length}</strong>
             <span className="summary-value">{statusSummary}</span>
+          </div>
+          <div className="summary-card telemetry-card">
+            <span className="summary-label">Monitoring pulse</span>
+            <strong>{scenario.monitoring?.source === 'gateway' ? 'Gateway evidence' : 'Local preset'}</strong>
+            <span className="summary-value">{monitoringSummary}</span>
           </div>
           <RuntimeStatusCard runtimeMode={runtimeMode} runtimeStatus={runtimeStatus} />
         </div>

@@ -24,6 +24,7 @@ export function RuntimeStatusCard({ runtimeMode, runtimeStatus }: RuntimeStatusC
       <span className="summary-label">Runtime status</span>
       <strong>{label}</strong>
       <span className="summary-value">{runtimeMode === 'mock' ? 'Using scenario presets locally' : runtimeStatus.detail}</span>
+      {runtimeStatus.lastUpdatedAt && runtimeMode === 'gateway' ? <span className="runtime-updated">Live snapshot received</span> : null}
     </div>
   )
 }

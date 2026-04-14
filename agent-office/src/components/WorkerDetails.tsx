@@ -57,6 +57,31 @@ export function WorkerDetails({ worker }: WorkerDetailsProps) {
           <dd>{worker.lastCompleted}</dd>
         </div>
       </dl>
+
+      <div className="monitoring-section">
+        <p className="section-kicker">Monitoring evidence</p>
+        <div className="monitoring-grid">
+          <div>
+            <span>Source</span>
+            <strong>{worker.monitoring?.source === 'gateway' ? 'Gateway live signals' : 'Mock preset data'}</strong>
+          </div>
+          <div>
+            <span>Matched sessions</span>
+            <strong>{worker.monitoring?.sessionCount ?? worker.queue}</strong>
+          </div>
+          <div>
+            <span>Presence signal</span>
+            <strong>{worker.monitoring?.presenceLabel ?? 'No live presence note'}</strong>
+          </div>
+          <div>
+            <span>Session evidence</span>
+            <strong>
+              {worker.monitoring?.sessionLabel ?? 'No matched live session'}
+              {worker.monitoring?.sessionStatus ? ` (${worker.monitoring.sessionStatus})` : ''}
+            </strong>
+          </div>
+        </div>
+      </div>
     </section>
   )
 }

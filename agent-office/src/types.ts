@@ -10,6 +10,21 @@ export type WorkerPersona = {
   specialty: string
 }
 
+export type WorkerMonitoring = {
+  source: 'mock' | 'gateway'
+  sessionCount?: number
+  presenceLabel?: string
+  sessionLabel?: string
+  sessionStatus?: string
+}
+
+export type ScenarioMonitoring = {
+  source: 'mock' | 'gateway'
+  sessionCount?: number
+  presenceCount?: number
+  lastUpdatedLabel?: string
+}
+
 export type Worker = {
   id: WorkerId
   name: string
@@ -24,6 +39,7 @@ export type Worker = {
   duration: string
   lastActiveLabel: string
   persona: WorkerPersona
+  monitoring?: WorkerMonitoring
 }
 
 export type TimelineEvent = {
@@ -43,4 +59,5 @@ export type ScenarioPreset = {
   delegation: string
   workers: Worker[]
   timeline: TimelineEvent[]
+  monitoring?: ScenarioMonitoring
 }

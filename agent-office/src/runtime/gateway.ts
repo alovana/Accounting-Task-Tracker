@@ -23,6 +23,13 @@ export type GatewayWorkerSnapshot = {
   task?: string
   queue?: number
   lastActiveLabel?: string
+  monitoring?: {
+    source: 'gateway'
+    sessionCount?: number
+    presenceLabel?: string
+    sessionLabel?: string
+    sessionStatus?: string
+  }
 }
 
 export type GatewayTimelineSnapshot = {
@@ -42,6 +49,12 @@ export type GatewayOfficeSnapshot = {
   delegation?: string
   workers?: GatewayWorkerSnapshot[]
   timeline?: GatewayTimelineSnapshot[]
+  monitoring?: {
+    source: 'gateway'
+    sessionCount?: number
+    presenceCount?: number
+    lastUpdatedLabel?: string
+  }
 }
 
 export type GatewaySessionListItem = {
@@ -188,6 +201,10 @@ function formatRelativeTime(timestampMs?: number) {
   return `${deltaDays}d ago`
 }
 
+function formatRuntimeUpdate(timestampMs?: number) {
+  return timestampMs ? formatRelativeTime(timestampMs) : 'pending'
+}
+
 function buildOfficeSnapshot(
   presenceEntries: GatewayPresenceEntry[],
   sessionList: GatewaySessionListResult,
@@ -219,6 +236,13 @@ function buildOfficeSnapshot(
       task,
       queue: workerSessions.length,
       lastActiveLabel,
+      monitoring: {
+        source: 'gateway',
+        sessionCount: workerSessions.length,
+        presenceLabel: presence?.text ?? presence?.reason,
+        sessionLabel: session?.label ?? session?.summary ?? session?.task,
+        sessionStatus: session?.status,
+      },
     }
   })
 
@@ -242,6 +266,12 @@ function buildOfficeSnapshot(
     scenarioLabel: 'Gateway Live Snapshot',
     delegation: inferDelegation(timelineWorkers),
     workers,
+    monitoring: {
+      source: 'gateway',
+      sessionCount: sessions.length,
+      presenceCount: presenceEntries.length,
+      lastUpdatedLabel: formatRuntimeUpdate(runtimeStatus.lastUpdatedAt),
+    },
     timeline: buildRuntimeTimeline({
       workers: timelineWorkers,
       sessionCount: sessions.length,
