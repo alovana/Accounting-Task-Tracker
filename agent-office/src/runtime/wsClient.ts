@@ -13,6 +13,53 @@ function createRequestId() {
   return `req_${Math.random().toString(36).slice(2, 10)}`
 }
 
+function normalizeCredential(value: string | undefined) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
+function resolveConnectAuth(options: GatewayConnectOptions, storedDeviceToken?: string) {
+  const token = normalizeCredential(options.gatewayToken)
+  const password = normalizeCredential(options.gatewayPassword)
+  const deviceToken = normalizeCredential(options.deviceToken) ?? normalizeCredential(storedDeviceToken)
+
+  if (token) {
+    return {
+      auth: {
+        token,
+      },
+      signatureToken: token,
+      reusedStoredDeviceToken: false,
+    }
+  }
+
+  if (password) {
+    return {
+      auth: {
+        password,
+      },
+      signatureToken: password,
+      reusedStoredDeviceToken: false,
+    }
+  }
+
+  if (deviceToken) {
+    return {
+      auth: {
+        deviceToken,
+      },
+      signatureToken: deviceToken,
+      reusedStoredDeviceToken: deviceToken === normalizeCredential(storedDeviceToken),
+    }
+  }
+
+  return {
+    auth: {},
+    signatureToken: undefined,
+    reusedStoredDeviceToken: false,
+  }
+}
+
 export class GatewayWsClient {
   private socket: WebSocket | null = null
   private url: string
@@ -69,21 +116,7 @@ export class GatewayWsClient {
     const deviceFamily = options.deviceFamily ?? 'browser'
     const requestedScopes = options.scopes ?? ['operator.read']
 
-    const auth: Record<string, string> = {}
-
-    if (options.gatewayToken) {
-      auth.token = options.gatewayToken
-    }
-
-    if (options.gatewayPassword) {
-      auth.password = options.gatewayPassword
-    }
-
-    if (options.deviceToken ?? device.token) {
-      auth.deviceToken = options.deviceToken ?? device.token ?? ''
-    }
-
-    const authTokenForSignature = auth.token ?? auth.password ?? auth.deviceToken
+    const { auth, signatureToken, reusedStoredDeviceToken } = resolveConnectAuth(options, device.token)
     const challengePayload = buildChallengePayload({
       deviceId: device.id,
       clientId,
@@ -91,7 +124,7 @@ export class GatewayWsClient {
       role: 'operator',
       scopes: requestedScopes,
       signedAtMs: signedAt,
-      token: authTokenForSignature,
+      token: signatureToken,
       nonce: challenge.nonce,
       platform,
       deviceFamily,
@@ -106,6 +139,8 @@ export class GatewayWsClient {
       deviceFamily,
       signedAt,
       signedPayloadVersion: 'v3',
+      authMode: auth.token ? 'token' : auth.password ? 'password' : auth.deviceToken ? 'device-token' : 'none',
+      reusedStoredDeviceToken,
     })
 
     const response = await this.sendRequest<GatewayHelloOk>('connect', {

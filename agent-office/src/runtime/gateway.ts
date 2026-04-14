@@ -1,3 +1,4 @@
+import { resolveGatewayConnectOptions } from './gatewayConfig'
 import { GatewayWsClient } from './wsClient'
 import {
   allWorkerIds,
@@ -175,16 +176,18 @@ class WebSocketGatewayTransport implements GatewayTransport {
 
   async fetchOfficeSnapshot() {
     try {
-      const hello = await this.client.connectAsOperator({
-        clientId: 'gateway-client',
-        clientMode: 'ui',
-        clientVersion: '0.0.0',
-        platform: 'web',
-        deviceFamily: 'browser',
-        scopes: ['operator.read'],
-        locale: navigator.language,
-        userAgent: navigator.userAgent,
-      })
+      const hello = await this.client.connectAsOperator(
+        resolveGatewayConnectOptions({
+          clientId: 'gateway-client',
+          clientMode: 'ui',
+          clientVersion: '0.0.0',
+          platform: 'web',
+          deviceFamily: 'browser',
+          scopes: ['operator.read'],
+          locale: navigator.language,
+          userAgent: navigator.userAgent,
+        }),
+      )
 
       const [presenceResult, sessionListResult] = await Promise.all([
         this.client.sendRequest<GatewayPresenceEntry[]>('system-presence', {}),

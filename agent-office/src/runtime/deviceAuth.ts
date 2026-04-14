@@ -21,6 +21,11 @@ export type GatewayDeviceIdentity = {
   saveIssuedToken: (token: string | undefined, meta?: { scopes?: string[]; role?: string }) => Promise<void>
 }
 
+function normalizeIssuedToken(token: string | undefined) {
+  const trimmed = token?.trim()
+  return trimmed ? trimmed : undefined
+}
+
 function encodeBase64(bytes: Uint8Array) {
   let binary = ''
 
@@ -192,9 +197,15 @@ export async function getOrCreateGatewayDeviceIdentity(): Promise<GatewayDeviceI
         return encodeBase64(new Uint8Array(signature))
       },
       async saveIssuedToken(token, meta) {
+        const normalizedToken = normalizeIssuedToken(token)
+
+        if (!normalizedToken) {
+          return
+        }
+
         persistDevice({
           ...persisted,
-          token,
+          token: normalizedToken,
           tokenScopes: meta?.scopes,
           tokenRole: meta?.role,
           updatedAt: Date.now(),
@@ -238,9 +249,15 @@ export async function getOrCreateGatewayDeviceIdentity(): Promise<GatewayDeviceI
       return encodeBase64(new Uint8Array(signature))
     },
     async saveIssuedToken(token, meta) {
+      const normalizedToken = normalizeIssuedToken(token)
+
+      if (!normalizedToken) {
+        return
+      }
+
       persistDevice({
         ...created,
-        token,
+        token: normalizedToken,
         tokenScopes: meta?.scopes,
         tokenRole: meta?.role,
         updatedAt: Date.now(),
