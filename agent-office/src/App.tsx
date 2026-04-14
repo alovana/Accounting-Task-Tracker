@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import './App.css'
 import { TimelineList } from './components/TimelineList'
+import { RuntimeStatusCard } from './components/RuntimeStatusCard'
 import { WorkerCard } from './components/WorkerCard'
 import { WorkerDetails } from './components/WorkerDetails'
 import { scenarioPresets } from './mockData'
@@ -13,7 +14,7 @@ function App() {
   const [selectedWorkerId, setSelectedWorkerId] = useState<WorkerId>('main')
   const [statusFilter, setStatusFilter] = useState<'all' | WorkerStatus>('all')
 
-  const { runtimeMode, setRuntimeMode, scenario } = useOfficeRuntime(scenarioId)
+  const { runtimeMode, setRuntimeMode, scenario, runtimeStatus } = useOfficeRuntime(scenarioId)
   const selectedWorker = scenario.workers.find((worker) => worker.id === selectedWorkerId) ?? scenario.workers[0]
 
   const statusSummary = useMemo(() => {
@@ -62,6 +63,7 @@ function App() {
             <strong>{scenario.workers.length}</strong>
             <span className="summary-value">{statusSummary}</span>
           </div>
+          <RuntimeStatusCard runtimeMode={runtimeMode} runtimeStatus={runtimeStatus} />
         </div>
       </section>
 

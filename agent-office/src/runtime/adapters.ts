@@ -1,5 +1,6 @@
 import { scenarioPresets } from '../mockData'
 import type { ScenarioPreset, TimelineEvent, Worker } from '../types'
+import { durationFromStatus, energyFromStatus } from './liveState'
 import type { GatewayOfficeSnapshot } from './gateway'
 
 export function buildScenarioFromGateway(snapshot: GatewayOfficeSnapshot | null): ScenarioPreset {
@@ -18,6 +19,8 @@ export function buildScenarioFromGateway(snapshot: GatewayOfficeSnapshot | null)
       status: incoming?.status ?? worker.status,
       task: incoming?.task ?? worker.task,
       queue: incoming?.queue ?? worker.queue,
+      energy: energyFromStatus(incoming?.status ?? worker.status),
+      duration: durationFromStatus(incoming?.status ?? worker.status, incoming?.lastActiveLabel ?? worker.lastActiveLabel),
       lastActiveLabel: incoming?.lastActiveLabel ?? worker.lastActiveLabel,
     }
   })

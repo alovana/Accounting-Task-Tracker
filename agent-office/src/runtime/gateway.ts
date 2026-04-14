@@ -1,4 +1,15 @@
 import { GatewayWsClient } from './wsClient'
+import {
+  allWorkerIds,
+  buildRuntimeTimeline,
+  durationFromStatus,
+  energyFromStatus,
+  getPrimaryPresence,
+  getPrimarySession,
+  inferDelegation,
+  inferStatusFromPresence,
+  type RuntimeStatus,
+} from './liveState'
 import type { GatewayPresenceEntry } from './protocol'
 
 export type GatewayWorkerSnapshot = {
@@ -29,7 +40,7 @@ export type GatewayOfficeSnapshot = {
   timeline?: GatewayTimelineSnapshot[]
 }
 
-type GatewaySessionListItem = {
+export type GatewaySessionListItem = {
   key: string
   label?: string
   model?: string
@@ -72,119 +83,56 @@ function formatRelativeTime(timestampMs?: number) {
   return `${deltaDays}d ago`
 }
 
-function inferWorkerId(session: GatewaySessionListItem): GatewayWorkerSnapshot['id'] | null {
-  const haystack = `${session.key} ${session.label ?? ''}`.toLowerCase()
+function buildOfficeSnapshot(
+  presenceEntries: GatewayPresenceEntry[],
+  sessionList: GatewaySessionListResult,
+  runtimeStatus: RuntimeStatus,
+) {
+  const sessions = sessionList.sessions ?? []
 
-  if (/(:|\b)vision(\b|:)/.test(haystack)) {
-    return 'vision'
-  }
-
-  if (/(:|\b)logic(\b|:)/.test(haystack)) {
-    return 'logic'
-  }
-
-  if (/(:|\b)main(\b|:)/.test(haystack)) {
-    return 'main'
-  }
-
-  return null
-}
-
-function inferStatusFromPresence(entry?: GatewayPresenceEntry): GatewayWorkerSnapshot['status'] {
-  const text = (entry?.text ?? '').toLowerCase()
-  const reason = (entry?.reason ?? '').toLowerCase()
-
-  if (text.includes('sleep') || reason.includes('sleep')) {
-    return 'sleeping'
-  }
-
-  if (text.includes('wait') || reason.includes('wait')) {
-    return 'waiting'
-  }
-
-  if (text.includes('block') || reason.includes('block')) {
-    return 'blocked'
-  }
-
-  if (text.includes('done') || reason.includes('done')) {
-    return 'done'
-  }
-
-  if (text) {
-    return 'working'
-  }
-
-  return 'idle'
-}
-
-function inferDelegation(workers: GatewayWorkerSnapshot[]) {
-  const activeSpecialist = workers.find((worker) => worker.id !== 'main' && worker.status === 'working')
-
-  if (activeSpecialist) {
-    return `Main → ${activeSpecialist.id[0].toUpperCase()}${activeSpecialist.id.slice(1)}`
-  }
-
-  return 'Main → Logic'
-}
-
-function buildOfficeSnapshot(presenceEntries: GatewayPresenceEntry[], sessionList: GatewaySessionListResult) {
-  const sessionsByWorker = new Map<GatewayWorkerSnapshot['id'], GatewaySessionListItem>()
-
-  for (const session of sessionList.sessions ?? []) {
-    const workerId = inferWorkerId(session)
-
-    if (workerId && !sessionsByWorker.has(workerId)) {
-      sessionsByWorker.set(workerId, session)
-    }
-  }
-
-  const presenceByWorker = new Map<GatewayWorkerSnapshot['id'], GatewayPresenceEntry>()
-
-  for (const entry of presenceEntries) {
-    const mode = (entry.mode ?? '').toLowerCase()
-
-    if (mode && mode !== 'cli' && mode !== 'ui' && mode !== 'webchat') {
-      continue
-    }
-
-    const text = (entry.text ?? '').toLowerCase()
-    const workerId = text.includes('vision') ? 'vision' : text.includes('logic') ? 'logic' : text.includes('main') ? 'main' : null
-
-    if (workerId && !presenceByWorker.has(workerId)) {
-      presenceByWorker.set(workerId, entry)
-    }
-  }
-
-  const workers: GatewayWorkerSnapshot[] = (['main', 'vision', 'logic'] as const).map((workerId) => {
-    const session = sessionsByWorker.get(workerId)
-    const presence = presenceByWorker.get(workerId)
+  const workers: GatewayWorkerSnapshot[] = allWorkerIds().map((workerId) => {
+    const session = getPrimarySession(sessions, workerId)
+    const presence = getPrimaryPresence(presenceEntries, workerId)
+    const status = inferStatusFromPresence(presence, Boolean(session))
     const model = session?.modelProvider && session?.model ? `${session.modelProvider}/${session.model}` : session?.model
+    const lastActiveLabel = formatRelativeTime(presence?.ts)
 
     return {
       id: workerId,
       model,
-      status: inferStatusFromPresence(presence),
-      task: session?.label ?? presence?.text ?? undefined,
+      status,
+      task: session?.label ?? presence?.text ?? runtimeStatus.detail,
       queue: session ? 1 : 0,
-      lastActiveLabel: formatRelativeTime(presence?.ts),
+      lastActiveLabel,
     }
   })
 
+  const timelineWorkers = workers.map((worker) => ({
+    id: worker.id,
+    name: worker.id === 'main' ? 'Main' : worker.id === 'vision' ? 'Vision' : 'Logic',
+    role: '',
+    model: worker.model ?? 'unknown',
+    status: worker.status ?? 'idle',
+    task: worker.task ?? 'No active task',
+    lastCompleted: 'Gateway-driven status',
+    location: '',
+    energy: energyFromStatus(worker.status ?? 'idle'),
+    queue: worker.queue ?? 0,
+    duration: durationFromStatus(worker.status ?? 'idle', worker.lastActiveLabel),
+    lastActiveLabel: worker.lastActiveLabel ?? 'unknown',
+    persona: { icon: '', tone: '', specialty: '' },
+  }))
+
   return {
     scenarioLabel: 'Gateway Live Snapshot',
-    delegation: inferDelegation(workers),
+    delegation: inferDelegation(timelineWorkers),
     workers,
-    timeline: [
-      {
-        id: 1,
-        actorId: 'main',
-        kind: 'status_change',
-        title: 'Gateway snapshot loaded',
-        detail: `Read ${sessionList.sessions?.length ?? 0} sessions and ${presenceEntries.length} presence entries from the Gateway.`,
-        time: 'Now',
-        tags: ['gateway', 'read-only'],
-      },
-    ],
+    timeline: buildRuntimeTimeline({
+      workers: timelineWorkers,
+      sessionCount: sessions.length,
+      presenceCount: presenceEntries.length,
+      runtimeStatus,
+    }),
   } satisfies GatewayOfficeSnapshot
 }
 
@@ -242,7 +190,11 @@ class WebSocketGatewayTransport implements GatewayTransport {
         sessionCount: sessionListResult.sessions?.length ?? 0,
       })
 
-      return buildOfficeSnapshot(presenceResult, sessionListResult)
+      return buildOfficeSnapshot(presenceResult, sessionListResult, {
+        connection: 'live',
+        detail: 'Live Gateway data mapped into office workers.',
+        lastUpdatedAt: Date.now(),
+      })
     } catch (error) {
       console.warn('[Agent Office] Gateway snapshot fetch failed, falling back to mock snapshot', error)
       return null

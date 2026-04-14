@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: Agent Office
-- Current phase: browser-side gateway auth scaffolding
-- In progress: wiring persisted device identity and signed operator-connect flow into Gateway mode
-- Last completed: added browser-side device auth helper and connected it to the WebSocket client scaffold
-- Next steps: verify signed payload shape against a real Gateway and map live RPC state into office workers
+- Current phase: local-first gateway runtime mapping
+- In progress: preparing real Gateway verification after strengthening local session and presence mapping logic
+- Last completed: added runtime connection status UI, smarter session/presence-to-worker inference, derived worker energy/duration mapping, and controlled Gateway refresh flow
+- Next steps: verify signed payload and `sessions.list`/presence shapes against a real Gateway, then refine worker assignment heuristics from live data
 - Human action needed: none
-- Last updated: 2026-04-13 00:16 ICT
+- Last updated: 2026-04-14 22:39 ICT
