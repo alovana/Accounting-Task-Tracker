@@ -36,7 +36,7 @@ What is verified from the local OpenClaw docs and installed dist:
 - shared-secret auth uses `connect.params.auth.token` or `connect.params.auth.password`
 - successful connects can return `hello-ok.auth.deviceToken`, which should be persisted if non-empty
 - reconnect precedence is shared token/password first, then explicit/stored device token
-- Agent Office now follows that precedence conservatively and will not overwrite a cached device token with an empty or missing token on later connects
+- Agent Office now follows that precedence conservatively, will retry once with an explicit or stored device token only when a shared-secret connect is rejected with an explicit `canRetryWithDeviceToken` hint, and will not overwrite a cached device token with an empty or missing token on later connects
 - the canonical signer payload is `v3|deviceId|clientId|clientMode|role|scopesCsv|signedAtMs|token|nonce|platform|deviceFamily`
 - `platform` and `deviceFamily` are normalized as trimmed lowercase ASCII strings before signing
 - a valid client id for this style of browser client is `gateway-client`, with `client.mode: "ui"`
@@ -50,7 +50,7 @@ Gateway mode is now a safer read-only integration scaffold, but the office-speci
 - `VITE_OPENCLAW_GATEWAY_URL` enables Gateway mode.
 - `VITE_OPENCLAW_GATEWAY_TOKEN` or `VITE_OPENCLAW_GATEWAY_PASSWORD` explicitly selects shared-secret auth style.
 - `VITE_OPENCLAW_GATEWAY_SHARED_SECRET` is also supported, with optional `VITE_OPENCLAW_GATEWAY_SHARED_SECRET_KIND=password` when the secret should be sent as `auth.password` instead of `auth.token`.
-- If a shared secret is configured, Agent Office prefers it for connect auth and only falls back to an explicit or stored device token when no shared secret is available.
+- If a shared secret is configured, Agent Office prefers it for connect auth and only falls back to an explicit or stored device token when the Gateway explicitly marks that retry as safe.
 
 ## Why this layer exists
 The Gateway owns session and task truth. The dashboard should consume that truth through Gateway RPC/event streams instead of reading local files directly.

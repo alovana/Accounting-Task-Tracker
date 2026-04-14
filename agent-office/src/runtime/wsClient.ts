@@ -18,6 +18,20 @@ function normalizeCredential(value: string | undefined) {
   return trimmed ? trimmed : undefined
 }
 
+type GatewayAuthMode = 'token' | 'password' | 'device-token' | 'none'
+
+class GatewayRequestError extends Error {
+  code?: string
+  details?: GatewayErrorResponse['error']['details']
+
+  constructor(message: string, options?: { code?: string; details?: GatewayErrorResponse['error']['details'] }) {
+    super(message)
+    this.name = 'GatewayRequestError'
+    this.code = options?.code
+    this.details = options?.details
+  }
+}
+
 function resolveConnectAuth(options: GatewayConnectOptions, storedDeviceToken?: string) {
   const token = normalizeCredential(options.gatewayToken)
   const password = normalizeCredential(options.gatewayPassword)
@@ -28,6 +42,7 @@ function resolveConnectAuth(options: GatewayConnectOptions, storedDeviceToken?: 
       auth: {
         token,
       },
+      authMode: 'token' as const,
       signatureToken: token,
       reusedStoredDeviceToken: false,
     }
@@ -38,6 +53,7 @@ function resolveConnectAuth(options: GatewayConnectOptions, storedDeviceToken?: 
       auth: {
         password,
       },
+      authMode: 'password' as const,
       signatureToken: password,
       reusedStoredDeviceToken: false,
     }
@@ -48,6 +64,7 @@ function resolveConnectAuth(options: GatewayConnectOptions, storedDeviceToken?: 
       auth: {
         deviceToken,
       },
+      authMode: 'device-token' as const,
       signatureToken: deviceToken,
       reusedStoredDeviceToken: deviceToken === normalizeCredential(storedDeviceToken),
     }
@@ -55,9 +72,22 @@ function resolveConnectAuth(options: GatewayConnectOptions, storedDeviceToken?: 
 
   return {
     auth: {},
+    authMode: 'none' as const,
     signatureToken: undefined,
     reusedStoredDeviceToken: false,
   }
+}
+
+function shouldRetryConnectWithDeviceToken(error: unknown, authMode: GatewayAuthMode, hasDeviceToken: boolean) {
+  if (!hasDeviceToken || (authMode !== 'token' && authMode !== 'password')) {
+    return false
+  }
+
+  if (!(error instanceof GatewayRequestError)) {
+    return false
+  }
+
+  return error.details?.canRetryWithDeviceToken === true
 }
 
 export class GatewayWsClient {
@@ -109,73 +139,105 @@ export class GatewayWsClient {
   async connectAsOperator(options: GatewayConnectOptions = {}) {
     const challenge = await this.waitForChallenge()
     const device = await getOrCreateGatewayDeviceIdentity()
-    const signedAt = Date.now()
     const clientId = options.clientId ?? 'gateway-client'
     const clientMode = options.clientMode ?? 'ui'
     const platform = options.platform ?? 'web'
     const deviceFamily = options.deviceFamily ?? 'browser'
     const requestedScopes = options.scopes ?? ['operator.read']
 
-    const { auth, signatureToken, reusedStoredDeviceToken } = resolveConnectAuth(options, device.token)
-    const challengePayload = buildChallengePayload({
-      deviceId: device.id,
-      clientId,
-      clientMode,
-      role: 'operator',
-      scopes: requestedScopes,
-      signedAtMs: signedAt,
-      token: signatureToken,
-      nonce: challenge.nonce,
-      platform,
-      deviceFamily,
-    })
-    const signature = await device.signChallenge(challengePayload)
-
-    console.info('[Agent Office] Received Gateway challenge and prepared signed v3 device handshake', {
-      deviceId: device.id,
-      clientId,
-      clientMode,
-      platform,
-      deviceFamily,
-      signedAt,
-      signedPayloadVersion: 'v3',
-      authMode: auth.token ? 'token' : auth.password ? 'password' : auth.deviceToken ? 'device-token' : 'none',
-      reusedStoredDeviceToken,
-    })
-
-    const response = await this.sendRequest<GatewayHelloOk>('connect', {
-      minProtocol: 3,
-      maxProtocol: 3,
-      client: {
-        id: clientId,
-        version: options.clientVersion ?? '0.0.0',
+    const attemptConnect = async (attemptOptions: GatewayConnectOptions, fallbackReason?: string) => {
+      const signedAt = Date.now()
+      const { auth, authMode, signatureToken, reusedStoredDeviceToken } = resolveConnectAuth(attemptOptions, device.token)
+      const challengePayload = buildChallengePayload({
+        deviceId: device.id,
+        clientId,
+        clientMode,
+        role: 'operator',
+        scopes: requestedScopes,
+        signedAtMs: signedAt,
+        token: signatureToken,
+        nonce: challenge.nonce,
         platform,
         deviceFamily,
-        mode: clientMode,
-      },
-      role: 'operator',
-      scopes: requestedScopes,
-      caps: [],
-      commands: [],
-      permissions: {},
-      auth,
-      locale: options.locale ?? 'en-US',
-      userAgent: options.userAgent ?? 'agent-office/0.0.0',
-      device: {
-        id: device.id,
-        publicKey: device.publicKey,
-        signature,
+      })
+      const signature = await device.signChallenge(challengePayload)
+
+      console.info('[Agent Office] Received Gateway challenge and prepared signed v3 device handshake', {
+        deviceId: device.id,
+        clientId,
+        clientMode,
+        platform,
+        deviceFamily,
         signedAt,
-        nonce: challenge.nonce,
-      },
-    })
+        signedPayloadVersion: 'v3',
+        authMode,
+        reusedStoredDeviceToken,
+        fallbackReason,
+      })
 
-    await device.saveIssuedToken(response.auth?.deviceToken, {
-      scopes: response.auth?.scopes,
-      role: response.auth?.role,
-    })
+      const response = await this.sendRequest<GatewayHelloOk>('connect', {
+        minProtocol: 3,
+        maxProtocol: 3,
+        client: {
+          id: clientId,
+          version: options.clientVersion ?? '0.0.0',
+          platform,
+          deviceFamily,
+          mode: clientMode,
+        },
+        role: 'operator',
+        scopes: requestedScopes,
+        caps: [],
+        commands: [],
+        permissions: {},
+        auth,
+        locale: options.locale ?? 'en-US',
+        userAgent: options.userAgent ?? 'agent-office/0.0.0',
+        device: {
+          id: device.id,
+          publicKey: device.publicKey,
+          signature,
+          signedAt,
+          nonce: challenge.nonce,
+        },
+      })
 
-    return response
+      await device.saveIssuedToken(response.auth?.deviceToken, {
+        scopes: response.auth?.scopes,
+        role: response.auth?.role,
+      })
+
+      return { response, authMode }
+    }
+
+    try {
+      return (await attemptConnect(options)).response
+    } catch (error) {
+      const hasDeviceToken = Boolean(normalizeCredential(options.deviceToken) ?? normalizeCredential(device.token))
+      const primaryAuth = resolveConnectAuth(options, device.token)
+
+      if (!shouldRetryConnectWithDeviceToken(error, primaryAuth.authMode, hasDeviceToken)) {
+        throw error
+      }
+
+      console.warn('[Agent Office] Shared-secret Gateway auth failed, retrying once with device token', {
+        primaryAuthMode: primaryAuth.authMode,
+        code: error instanceof GatewayRequestError ? error.code : undefined,
+        reason: error instanceof GatewayRequestError ? error.details?.reason : undefined,
+        recommendedNextStep: error instanceof GatewayRequestError ? error.details?.recommendedNextStep : undefined,
+      })
+
+      return (
+        await attemptConnect(
+          {
+            ...options,
+            gatewayToken: undefined,
+            gatewayPassword: undefined,
+          },
+          'shared-secret-rejected-retrying-with-device-token',
+        )
+      ).response
+    }
   }
 
   private waitForResponse<T>(requestId: string) {
@@ -192,8 +254,14 @@ export class GatewayWsClient {
         if (!envelope.ok) {
           const error = envelope as GatewayErrorResponse
           const detailsCode = error.error.details?.code
+          const errorCode = error.error.code ?? detailsCode
           const message = error.error.message ?? 'Gateway request failed'
-          reject(new Error(detailsCode ? `${message} (${detailsCode})` : message))
+          reject(
+            new GatewayRequestError(detailsCode ? `${message} (${detailsCode})` : message, {
+              code: errorCode,
+              details: error.error.details,
+            }),
+          )
           return
         }
 
