@@ -6,8 +6,11 @@ import {
   energyFromStatus,
   getPrimaryPresence,
   getPrimarySession,
+  getSessionsForWorker,
   inferDelegation,
   inferStatusFromPresence,
+  inferStatusFromSession,
+  mergeWorkerStatus,
   type RuntimeStatus,
 } from './liveState'
 import type { GatewayPresenceEntry } from './protocol'
@@ -46,6 +49,9 @@ export type GatewaySessionListItem = {
   model?: string
   modelProvider?: string
   spawnedBy?: string
+  status?: string
+  summary?: string
+  task?: string
 }
 
 type GatewaySessionListResult = {
@@ -91,18 +97,28 @@ function buildOfficeSnapshot(
   const sessions = sessionList.sessions ?? []
 
   const workers: GatewayWorkerSnapshot[] = allWorkerIds().map((workerId) => {
+    const workerSessions = getSessionsForWorker(sessions, workerId)
     const session = getPrimarySession(sessions, workerId)
     const presence = getPrimaryPresence(presenceEntries, workerId)
-    const status = inferStatusFromPresence(presence, Boolean(session))
+    const presenceStatus = inferStatusFromPresence(presence, Boolean(session))
+    const sessionStatus = inferStatusFromSession(session)
+    const status = mergeWorkerStatus(presenceStatus, sessionStatus, Boolean(presence), workerSessions.length > 0)
     const model = session?.modelProvider && session?.model ? `${session.modelProvider}/${session.model}` : session?.model
     const lastActiveLabel = formatRelativeTime(presence?.ts)
+    const task =
+      session?.label ??
+      session?.summary ??
+      session?.task ??
+      (workerSessions.length > 1 ? `${workerSessions.length} queued Gateway sessions` : undefined) ??
+      presence?.text ??
+      runtimeStatus.detail
 
     return {
       id: workerId,
       model,
       status,
-      task: session?.label ?? presence?.text ?? runtimeStatus.detail,
-      queue: session ? 1 : 0,
+      task,
+      queue: workerSessions.length,
       lastActiveLabel,
     }
   })

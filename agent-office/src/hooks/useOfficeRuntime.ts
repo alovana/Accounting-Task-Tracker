@@ -72,11 +72,6 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
       intervalId = window.setInterval(() => {
         void loadGatewaySnapshot()
       }, 30000)
-    } else {
-      setRuntimeStatus({
-        connection: 'idle',
-        detail: 'Using local mock scenarios, no Gateway calls needed.',
-      })
     }
 
     return () => {
@@ -96,9 +91,21 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
     return scenarioPresets[scenarioId]
   }, [gatewayScenario, runtimeMode, scenarioId])
 
+  function handleRuntimeModeChange(nextMode: RuntimeMode) {
+    setRuntimeMode(nextMode)
+
+    if (nextMode === 'mock') {
+      setGatewayScenario(null)
+      setRuntimeStatus({
+        connection: 'idle',
+        detail: 'Using local mock scenarios, no Gateway calls needed.',
+      })
+    }
+  }
+
   return {
     runtimeMode,
-    setRuntimeMode,
+    setRuntimeMode: handleRuntimeModeChange,
     scenario,
     runtimeStatus,
   }

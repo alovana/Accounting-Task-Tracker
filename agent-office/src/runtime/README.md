@@ -9,6 +9,7 @@ This folder is the integration bridge between the dashboard UI and live OpenClaw
 - `gateway.ts` now performs a first real read-only snapshot fetch via `system-presence` plus `sessions.list`.
 - `adapters.ts` maps a gateway snapshot into the dashboard worker and timeline model.
 - `useOfficeRuntime` can switch between mock mode and gateway mode.
+- local-first worker inference now merges presence with conservative session heuristics (`label`, `status`, `summary`, `task`) so the dashboard can estimate queue depth and worker state without extra model work.
 
 ## Intended live data path
 1. Connect to the OpenClaw Gateway WebSocket.
