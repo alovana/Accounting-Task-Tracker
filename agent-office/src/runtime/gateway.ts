@@ -59,6 +59,97 @@ type GatewaySessionListResult = {
   sessions?: GatewaySessionListItem[]
 }
 
+type GatewaySessionChangePayload =
+  | GatewaySessionListItem
+  | GatewaySessionListItem[]
+  | {
+      action?: string
+      key?: string
+      session?: GatewaySessionListItem | null
+      sessions?: GatewaySessionListItem[]
+      removed?: string[]
+      deleted?: string[]
+    }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isSessionListItem(value: unknown): value is GatewaySessionListItem {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return typeof value.key === 'string' && value.key.trim().length > 0
+}
+
+function toSessionListItemArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.filter(isSessionListItem)
+}
+
+function normalizeSessionChangePayload(payload: GatewaySessionChangePayload) {
+  if (Array.isArray(payload)) {
+    return {
+      upserts: payload.filter(isSessionListItem),
+      removals: [] as string[],
+      shouldReplace: true,
+    }
+  }
+
+  if (isSessionListItem(payload)) {
+    return {
+      upserts: [payload],
+      removals: [] as string[],
+      shouldReplace: false,
+    }
+  }
+
+  if (!isRecord(payload)) {
+    return {
+      upserts: [] as GatewaySessionListItem[],
+      removals: [] as string[],
+      shouldReplace: false,
+    }
+  }
+
+  const upsertsFromSessions = toSessionListItemArray(payload.sessions)
+  const upsertsFromSession = isSessionListItem(payload.session) ? [payload.session] : []
+  const rawRemovals = [...(Array.isArray(payload.removed) ? payload.removed : []), ...(Array.isArray(payload.deleted) ? payload.deleted : [])]
+  const removals = rawRemovals.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+  const action = typeof payload.action === 'string' ? payload.action.toLowerCase() : ''
+  const keyedRemoval = (action === 'remove' || action === 'delete') && typeof payload.key === 'string' ? [payload.key] : []
+
+  return {
+    upserts: [...upsertsFromSessions, ...upsertsFromSession],
+    removals: [...removals, ...keyedRemoval],
+    shouldReplace: Array.isArray(payload.sessions) && upsertsFromSession.length === 0 && removals.length === 0 && keyedRemoval.length === 0,
+  }
+}
+
+function mergeSessionList(current: GatewaySessionListResult, payload: GatewaySessionChangePayload) {
+  const { upserts, removals, shouldReplace } = normalizeSessionChangePayload(payload)
+
+  if (shouldReplace) {
+    return { sessions: upserts }
+  }
+
+  const nextByKey = new Map((current.sessions ?? []).map((session) => [session.key, session]))
+
+  for (const key of removals) {
+    nextByKey.delete(key)
+  }
+
+  for (const session of upserts) {
+    nextByKey.set(session.key, session)
+  }
+
+  return { sessions: Array.from(nextByKey.values()) }
+}
+
 export type GatewayLiveUpdate = {
   snapshot: GatewayOfficeSnapshot | null
   runtimeStatus: RuntimeStatus
@@ -181,6 +272,7 @@ class NoopGatewayTransport implements GatewayTransport {
 class WebSocketGatewayTransport implements GatewayTransport {
   private client: GatewayWsClient
   private helloConnected = false
+  private subscriptionReady = false
   private presenceEntries: GatewayPresenceEntry[] = []
   private sessionList: GatewaySessionListResult = { sessions: [] }
   private listeners = new Set<(update: GatewayLiveUpdate) => void>()
@@ -203,10 +295,18 @@ class WebSocketGatewayTransport implements GatewayTransport {
         this.client.onEvent<GatewayPresenceEntry[] | GatewayPresenceEntry>('presence', (payload) => {
           this.handlePresenceEvent(payload)
         }),
-        this.client.onEvent('sessions.changed', () => {
+        this.client.onEvent<GatewaySessionChangePayload>('sessions.changed', (payload) => {
+          if (this.applySessionDelta(payload, 'Gateway session delta applied to the office view.')) {
+            return
+          }
+
           void this.refreshSnapshot('Gateway session change event received, refreshing snapshot...')
         }),
-        this.client.onEvent('session.message', () => {
+        this.client.onEvent<GatewaySessionChangePayload>('session.message', (payload) => {
+          if (this.applySessionDelta(payload, 'Gateway session message delta applied to the office view.')) {
+            return
+          }
+
           void this.refreshSnapshot('Gateway message event received, refreshing snapshot...')
         }),
         this.client.onEvent('chat', () => {
@@ -227,6 +327,8 @@ class WebSocketGatewayTransport implements GatewayTransport {
 
     this.unsubscribeCallbacks = []
     this.listeners.clear()
+    this.subscriptionReady = false
+    this.helloConnected = false
     this.client.disconnect()
   }
 
@@ -292,6 +394,7 @@ class WebSocketGatewayTransport implements GatewayTransport {
     )
 
     this.helloConnected = true
+    this.presenceEntries = hello.snapshot?.presence ?? this.presenceEntries
 
     console.info('[Agent Office] Gateway operator connection established', {
       discoveredMethods: hello.features?.methods?.filter((method) =>
@@ -301,6 +404,54 @@ class WebSocketGatewayTransport implements GatewayTransport {
         ['sessions.changed', 'session.message', 'presence', 'chat'].includes(event),
       ),
     })
+
+    await this.ensureSubscriptions(hello.features?.methods ?? [])
+  }
+
+  private async ensureSubscriptions(methods: string[]) {
+    if (this.subscriptionReady) {
+      return
+    }
+
+    const subscribeMethods = methods.filter((method) =>
+      ['sessions.subscribe', 'sessions.messages.subscribe'].includes(method),
+    )
+
+    if (!subscribeMethods.length) {
+      this.subscriptionReady = true
+      return
+    }
+
+    const subscriptionCalls = subscribeMethods.map((method) => this.client.sendRequest(method, {}))
+    const results = await Promise.allSettled(subscriptionCalls)
+
+    const rejected = results.filter((result) => result.status === 'rejected')
+
+    if (rejected.length > 0) {
+      console.warn('[Agent Office] Gateway subscriptions were only partially enabled', {
+        requestedMethods: subscribeMethods,
+        failures: rejected.length,
+      })
+    }
+
+    this.subscriptionReady = true
+  }
+
+  private applySessionDelta(payload: GatewaySessionChangePayload, detail: string) {
+    const nextSessionList = mergeSessionList(this.sessionList, payload)
+    const unchanged = JSON.stringify(nextSessionList.sessions ?? []) === JSON.stringify(this.sessionList.sessions ?? [])
+
+    if (unchanged) {
+      return false
+    }
+
+    this.sessionList = nextSessionList
+    this.emitUpdate({
+      connection: 'live',
+      detail,
+      lastUpdatedAt: Date.now(),
+    })
+    return true
   }
 
   private async refreshSnapshot(detail: string) {

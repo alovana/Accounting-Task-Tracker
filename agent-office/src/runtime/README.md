@@ -6,11 +6,11 @@ This folder is the integration bridge between the dashboard UI and live OpenClaw
 - `protocol.ts` defines the basic Gateway WS envelope shapes, `hello-ok.snapshot/auth` fields, and auth error hints.
 - `deviceAuth.ts` provides browser-side device identity generation, persistence, and the verified v3 signing payload builder.
 - `wsClient.ts` provides a minimal WebSocket client scaffold with request/response, event waiting, and signed operator-connect scaffolding.
-- `gateway.ts` now performs a first real read-only snapshot fetch via `system-presence` plus `sessions.list`, plumbs optional shared-secret auth from Vite env config, exposes transport cleanup so the UI can release sockets on teardown, and can consume passive live Gateway events to update presence immediately or trigger a serialized snapshot refresh.
+- `gateway.ts` now performs a first real read-only snapshot fetch via `system-presence` plus `sessions.list`, plumbs optional shared-secret auth from Vite env config, exposes transport cleanup so the UI can release sockets on teardown, and can consume passive live Gateway events to update presence immediately, apply conservative session deltas locally when payloads are rich enough, or trigger a serialized snapshot refresh.
 - `adapters.ts` maps a gateway snapshot into the dashboard worker and timeline model.
 - `useOfficeRuntime` can switch between mock mode and gateway mode.
 - gateway polling is serialized with `setTimeout` and reuses one transport per gateway-mode lifecycle, which avoids overlapping refreshes and orphaned WebSocket connections during future live integration work.
-- live event handling is conservative: `presence` updates are applied directly when possible, while `sessions.changed`, `session.message`, and `chat` act as refresh hints that reuse the same serialized snapshot fetch path instead of assuming undocumented event payload shapes.
+- live event handling is still conservative: `presence` updates are applied directly, `sessions.changed` and `session.message` now try a small set of safe delta payload shapes first (`session`, `sessions`, `removed`, `deleted`, or single keyed rows), and `chat` still acts as a refresh hint when no office-specific mapping is safe.
 - local-first worker inference now merges presence with conservative session heuristics (`label`, `status`, `summary`, `task`) so the dashboard can estimate queue depth and worker state without extra model work.
 
 ## Intended live data path
@@ -37,6 +37,7 @@ What is verified from the local OpenClaw docs and installed dist:
 - `connect` uses protocol `3`
 - shared-secret auth uses `connect.params.auth.token` or `connect.params.auth.password`
 - successful connects can return `hello-ok.auth.deviceToken`, which should be persisted if non-empty
+- successful connects can also include `hello-ok.snapshot.presence`, which Agent Office now treats as safe seed data before the first explicit snapshot refresh completes
 - reconnect precedence is shared token/password first, then explicit/stored device token
 - Agent Office now follows that precedence conservatively, will retry once with an explicit or stored device token only when a shared-secret connect is rejected with an explicit `canRetryWithDeviceToken` hint, and will not overwrite a cached device token with an empty or missing token on later connects
 - the canonical signer payload is `v3|deviceId|clientId|clientMode|role|scopesCsv|signedAtMs|token|nonce|platform|deviceFamily`
@@ -45,6 +46,7 @@ What is verified from the local OpenClaw docs and installed dist:
 
 Still uncertain:
 - the exact `sessions.list` row shape is not fully documented in the installed package, so Agent Office currently uses only conservative fields it could verify in shipped artifacts (`key`, `label`, `model`, `modelProvider`, `spawnedBy`) and treats the read-only office mapping as heuristic.
+- the exact acknowledgement payloads for `sessions.subscribe` and `sessions.messages.subscribe` are still treated as opaque. Agent Office only uses them as readiness toggles and does not assume durable subscription state beyond the current socket lifecycle.
 
 Gateway mode is now a safer read-only integration scaffold, but the office-specific session-to-worker mapping is still integration-in-progress rather than a fully productized live view.
 
