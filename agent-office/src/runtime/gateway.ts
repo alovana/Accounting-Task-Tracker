@@ -5,15 +5,18 @@ import {
   buildRuntimeTimeline,
   durationFromStatus,
   energyFromStatus,
+  formatRelativeTime,
   getPrimaryPresence,
   getPrimarySession,
   getSessionsForWorker,
   inferDelegation,
+  inferMonitoringFreshness,
   inferStatusFromPresence,
   inferStatusFromSession,
   mergeWorkerStatus,
   type RuntimeStatus,
 } from './liveState'
+import type { MonitoringFreshness } from '../types'
 import type { GatewayPresenceEntry } from './protocol'
 
 export type GatewayWorkerSnapshot = {
@@ -29,6 +32,7 @@ export type GatewayWorkerSnapshot = {
     presenceLabel?: string
     sessionLabel?: string
     sessionStatus?: string
+    freshness?: MonitoringFreshness
   }
 }
 
@@ -54,6 +58,7 @@ export type GatewayOfficeSnapshot = {
     sessionCount?: number
     presenceCount?: number
     lastUpdatedLabel?: string
+    freshness?: MonitoringFreshness
   }
 }
 
@@ -175,32 +180,6 @@ export type GatewayTransport = {
   disconnect: () => void
 }
 
-function formatRelativeTime(timestampMs?: number) {
-  if (!timestampMs || !Number.isFinite(timestampMs)) {
-    return 'unknown'
-  }
-
-  const deltaMs = Math.max(0, Date.now() - timestampMs)
-  const deltaMinutes = Math.floor(deltaMs / 60000)
-
-  if (deltaMinutes <= 0) {
-    return 'just now'
-  }
-
-  if (deltaMinutes < 60) {
-    return `${deltaMinutes}m ago`
-  }
-
-  const deltaHours = Math.floor(deltaMinutes / 60)
-
-  if (deltaHours < 24) {
-    return `${deltaHours}h ago`
-  }
-
-  const deltaDays = Math.floor(deltaHours / 24)
-  return `${deltaDays}d ago`
-}
-
 function formatRuntimeUpdate(timestampMs?: number) {
   return timestampMs ? formatRelativeTime(timestampMs) : 'pending'
 }
@@ -242,6 +221,7 @@ function buildOfficeSnapshot(
         presenceLabel: presence?.text ?? presence?.reason,
         sessionLabel: session?.label ?? session?.summary ?? session?.task,
         sessionStatus: session?.status,
+        freshness: inferMonitoringFreshness(presence?.ts ?? runtimeStatus.lastUpdatedAt),
       },
     }
   })
@@ -271,6 +251,7 @@ function buildOfficeSnapshot(
       sessionCount: sessions.length,
       presenceCount: presenceEntries.length,
       lastUpdatedLabel: formatRuntimeUpdate(runtimeStatus.lastUpdatedAt),
+      freshness: inferMonitoringFreshness(runtimeStatus.lastUpdatedAt),
     },
     timeline: buildRuntimeTimeline({
       workers: timelineWorkers,

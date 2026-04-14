@@ -10,6 +10,50 @@ export type RuntimeStatus = {
   lastUpdatedAt?: number
 }
 
+export function formatRelativeTime(timestampMs?: number, now = Date.now()) {
+  if (!timestampMs || !Number.isFinite(timestampMs)) {
+    return 'unknown'
+  }
+
+  const deltaMs = Math.max(0, now - timestampMs)
+  const deltaMinutes = Math.floor(deltaMs / 60000)
+
+  if (deltaMinutes <= 0) {
+    return 'just now'
+  }
+
+  if (deltaMinutes < 60) {
+    return `${deltaMinutes}m ago`
+  }
+
+  const deltaHours = Math.floor(deltaMinutes / 60)
+
+  if (deltaHours < 24) {
+    return `${deltaHours}h ago`
+  }
+
+  const deltaDays = Math.floor(deltaHours / 24)
+  return `${deltaDays}d ago`
+}
+
+export function inferMonitoringFreshness(timestampMs?: number, now = Date.now()) {
+  if (!timestampMs || !Number.isFinite(timestampMs)) {
+    return 'unknown' as const
+  }
+
+  const deltaMs = Math.max(0, now - timestampMs)
+
+  if (deltaMs <= 2 * 60 * 1000) {
+    return 'fresh' as const
+  }
+
+  if (deltaMs <= 10 * 60 * 1000) {
+    return 'aging' as const
+  }
+
+  return 'stale' as const
+}
+
 const WORKER_IDS: WorkerId[] = ['main', 'vision', 'logic']
 
 function normalizeText(value?: string | null) {

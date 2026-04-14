@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { TimelineList } from './components/TimelineList'
 import { RuntimeStatusCard } from './components/RuntimeStatusCard'
@@ -7,6 +7,7 @@ import { WorkerDetails } from './components/WorkerDetails'
 import { scenarioPresets } from './mockData'
 import { statusMeta } from './statusMeta'
 import { useOfficeRuntime } from './hooks/useOfficeRuntime'
+import { formatRelativeTime, inferMonitoringFreshness } from './runtime/liveState'
 import type { WorkerId, WorkerStatus } from './types'
 
 function App() {
@@ -15,7 +16,18 @@ function App() {
   const [statusFilter, setStatusFilter] = useState<'all' | WorkerStatus>('all')
 
   const { runtimeMode, setRuntimeMode, scenario, runtimeStatus } = useOfficeRuntime(scenarioId)
+  const [now, setNow] = useState(() => Date.now())
   const selectedWorker = scenario.workers.find((worker) => worker.id === selectedWorkerId) ?? scenario.workers[0]
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNow(Date.now())
+    }, 30000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [])
 
   const statusSummary = useMemo(() => {
     const counts = scenario.workers.reduce<Record<string, number>>((acc, worker) => {
@@ -41,10 +53,16 @@ function App() {
   }, [scenario.timeline, scenario.workers, statusFilter])
 
   const statusFilterOptions: Array<'all' | WorkerStatus> = ['all', 'working', 'idle', 'sleeping', 'waiting', 'blocked', 'done']
+  const monitoringFreshness =
+    scenario.monitoring?.source === 'gateway' ? inferMonitoringFreshness(runtimeStatus.lastUpdatedAt, now) : 'unknown'
   const monitoringSummary =
     scenario.monitoring?.source === 'gateway'
       ? `${scenario.monitoring.sessionCount ?? 0} sessions, ${scenario.monitoring.presenceCount ?? 0} presence signals`
       : 'Preset scene, no live Gateway signals'
+  const monitoringAgeLabel =
+    scenario.monitoring?.source === 'gateway' && runtimeStatus.lastUpdatedAt
+      ? formatRelativeTime(runtimeStatus.lastUpdatedAt, now)
+      : scenario.monitoring?.lastUpdatedLabel ?? 'local preset'
 
   return (
     <main className="app-shell">
@@ -67,12 +85,15 @@ function App() {
             <strong>{scenario.workers.length}</strong>
             <span className="summary-value">{statusSummary}</span>
           </div>
-          <div className="summary-card telemetry-card">
+          <div className={`summary-card telemetry-card ${monitoringFreshness}`}>
             <span className="summary-label">Monitoring pulse</span>
             <strong>{scenario.monitoring?.source === 'gateway' ? 'Gateway evidence' : 'Local preset'}</strong>
             <span className="summary-value">{monitoringSummary}</span>
+            <span className="runtime-updated">
+              {scenario.monitoring?.source === 'gateway' ? `Evidence age ${monitoringAgeLabel}` : monitoringAgeLabel}
+            </span>
           </div>
-          <RuntimeStatusCard runtimeMode={runtimeMode} runtimeStatus={runtimeStatus} />
+          <RuntimeStatusCard runtimeMode={runtimeMode} runtimeStatus={runtimeStatus} now={now} />
         </div>
       </section>
 

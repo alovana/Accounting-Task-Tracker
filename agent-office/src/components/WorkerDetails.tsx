@@ -1,11 +1,19 @@
 import { statusMeta } from '../statusMeta'
-import type { Worker } from '../types'
+import type { MonitoringFreshness, Worker } from '../types'
 
 type WorkerDetailsProps = {
   worker: Worker
 }
 
+const freshnessLabel: Record<MonitoringFreshness, string> = {
+  fresh: 'Fresh live evidence',
+  aging: 'Aging live evidence',
+  stale: 'Stale live evidence',
+  unknown: 'Unknown evidence age',
+}
+
 export function WorkerDetails({ worker }: WorkerDetailsProps) {
+  const monitoringFreshness = worker.monitoring?.freshness ?? 'unknown'
   return (
     <section className="panel-card selected-card">
       <p className="section-kicker">Selected worker</p>
@@ -72,6 +80,10 @@ export function WorkerDetails({ worker }: WorkerDetailsProps) {
           <div>
             <span>Presence signal</span>
             <strong>{worker.monitoring?.presenceLabel ?? 'No live presence note'}</strong>
+          </div>
+          <div>
+            <span>Signal freshness</span>
+            <strong>{worker.monitoring?.source === 'gateway' ? freshnessLabel[monitoringFreshness] : 'Preset scene state'}</strong>
           </div>
           <div>
             <span>Session evidence</span>

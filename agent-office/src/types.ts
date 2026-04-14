@@ -10,12 +10,15 @@ export type WorkerPersona = {
   specialty: string
 }
 
+export type MonitoringFreshness = 'fresh' | 'aging' | 'stale' | 'unknown'
+
 export type WorkerMonitoring = {
   source: 'mock' | 'gateway'
   sessionCount?: number
   presenceLabel?: string
   sessionLabel?: string
   sessionStatus?: string
+  freshness?: MonitoringFreshness
 }
 
 export type ScenarioMonitoring = {
@@ -23,6 +26,7 @@ export type ScenarioMonitoring = {
   sessionCount?: number
   presenceCount?: number
   lastUpdatedLabel?: string
+  freshness?: MonitoringFreshness
 }
 
 export type Worker = {
