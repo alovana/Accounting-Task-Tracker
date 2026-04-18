@@ -5,6 +5,7 @@ This folder is the integration bridge between the dashboard UI and live OpenClaw
 ## Current state
 - `protocol.ts` defines the basic Gateway WS envelope shapes, `hello-ok.snapshot/auth` fields, and auth error hints.
 - `deviceAuth.ts` provides browser-side device identity generation, persistence, and the verified v3 signing payload builder.
+  - It now matches the installed Gateway device-identity contract by using Ed25519 raw public keys, base64url encoding, sha256-derived device ids, and base64url signatures.
 - `wsClient.ts` provides a minimal WebSocket client scaffold with request/response, event waiting, and signed operator-connect scaffolding.
 - `gateway.ts` now performs a first real read-only snapshot fetch via `system-presence` plus `sessions.list`, plumbs optional shared-secret auth from Vite env config, exposes transport cleanup so the UI can release sockets on teardown, and can consume passive live Gateway events to update presence immediately, apply conservative session deltas locally when payloads are rich enough, or trigger a serialized snapshot refresh.
 - `adapters.ts` maps a gateway snapshot into the dashboard worker and timeline model.
@@ -34,6 +35,8 @@ This runtime now uses the installed OpenClaw package's verified v3 device-auth p
 
 What is verified from the local OpenClaw docs and installed dist:
 - browser/operator clients receive `connect.challenge` before `connect`
+- Gateway validates `device.id` as the sha256 hex fingerprint of the normalized raw public key, so UUID-style browser device ids are invalid for real connects
+- Gateway expects device public keys and signatures in base64url-compatible form, and its shipped device identity helpers use Ed25519 rather than browser-generated P-256 ids
 - `connect` uses protocol `3`
 - shared-secret auth uses `connect.params.auth.token` or `connect.params.auth.password`
 - successful connects can return `hello-ok.auth.deviceToken`, which should be persisted if non-empty

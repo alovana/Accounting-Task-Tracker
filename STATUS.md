@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: Agent Office
-- Current phase: local-first gateway runtime mapping
-- In progress: preparing real Gateway verification after strengthening local session and presence mapping logic
-- Last completed: added runtime connection status UI, smarter session/presence-to-worker inference, derived worker energy/duration mapping, and controlled Gateway refresh flow
-- Next steps: verify signed payload and `sessions.list`/presence shapes against a real Gateway, then refine worker assignment heuristics from live data
-- Human action needed: none
-- Last updated: 2026-04-14 22:39 ICT
+- Current phase: finalizing post-pair live Gateway verification and ship
+- In progress: validating live Gateway mapping after successful browser device pairing
+- Last completed: approved the Agent Office browser device, confirmed live Gateway access, and fixed invalid sessions subscription behavior
+- Next steps: commit the verified auth/runtime updates and push
+- Human action needed: none right now
+- Last updated: 2026-04-18 22:19 ICT

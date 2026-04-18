@@ -73,7 +73,7 @@ export type GatewaySessionListItem = {
   task?: string
 }
 
-type GatewaySessionListResult = {
+export type GatewaySessionListResult = {
   sessions?: GatewaySessionListItem[]
 }
 
@@ -438,23 +438,25 @@ class WebSocketGatewayTransport implements GatewayTransport {
       return
     }
 
-    const subscribeMethods = methods.filter((method) =>
-      ['sessions.subscribe', 'sessions.messages.subscribe'].includes(method),
-    )
+    const subscriptionCalls: Array<Promise<unknown>> = []
+    const requestedMethods: string[] = []
 
-    if (!subscribeMethods.length) {
+    if (methods.includes('sessions.subscribe')) {
+      requestedMethods.push('sessions.subscribe')
+      subscriptionCalls.push(this.client.sendRequest('sessions.subscribe', {}))
+    }
+
+    if (!subscriptionCalls.length) {
       this.subscriptionReady = true
       return
     }
 
-    const subscriptionCalls = subscribeMethods.map((method) => this.client.sendRequest(method, {}))
     const results = await Promise.allSettled(subscriptionCalls)
-
     const rejected = results.filter((result) => result.status === 'rejected')
 
     if (rejected.length > 0) {
       console.warn('[Agent Office] Gateway subscriptions were only partially enabled', {
-        requestedMethods: subscribeMethods,
+        requestedMethods,
         failures: rejected.length,
       })
     }

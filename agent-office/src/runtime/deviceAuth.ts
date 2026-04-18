@@ -1,11 +1,12 @@
 const DEVICE_STORAGE_KEY = 'agent-office.gateway.device'
+const ED25519_RAW_PUBLIC_KEY_LENGTH = 32
 
 type PersistedGatewayDevice = {
   id: string
   token?: string
   tokenScopes?: string[]
   tokenRole?: string
-  publicKeySpkiB64: string
+  publicKeyRawB64Url: string
   privateKeyPkcs8B64: string
   createdAt: number
   updatedAt: number
@@ -47,17 +48,33 @@ function decodeBase64(input: string) {
   return output
 }
 
-function createDeviceId() {
-  if (typeof crypto.randomUUID === 'function') {
-    return `agent-office-${crypto.randomUUID()}`
-  }
-
-  return `agent-office-${Math.random().toString(36).slice(2, 12)}`
+function encodeBase64Url(bytes: Uint8Array) {
+  return encodeBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
 
-async function exportPublicKey(publicKey: CryptoKey) {
-  const exported = await crypto.subtle.exportKey('spki', publicKey)
-  return encodeBase64(new Uint8Array(exported))
+function decodeBase64Url(input: string) {
+  const normalized = input.replace(/-/g, '+').replace(/_/g, '/')
+  const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4))
+  return decodeBase64(`${normalized}${padding}`)
+}
+
+async function sha256Hex(bytes: Uint8Array) {
+  const exactBytes = new Uint8Array(bytes.byteLength)
+  exactBytes.set(bytes)
+  const digest = await crypto.subtle.digest('SHA-256', exactBytes)
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function exportRawPublicKey(publicKey: CryptoKey) {
+  const exported = new Uint8Array(await crypto.subtle.exportKey('raw', publicKey))
+
+  if (exported.length !== ED25519_RAW_PUBLIC_KEY_LENGTH) {
+    throw new Error('Unexpected Ed25519 public key length')
+  }
+
+  return exported
 }
 
 async function exportPrivateKey(privateKey: CryptoKey) {
@@ -65,30 +82,12 @@ async function exportPrivateKey(privateKey: CryptoKey) {
   return encodeBase64(new Uint8Array(exported))
 }
 
-async function importPublicKey(publicKeySpkiB64: string) {
-  return crypto.subtle.importKey(
-    'spki',
-    decodeBase64(publicKeySpkiB64),
-    {
-      name: 'ECDSA',
-      namedCurve: 'P-256',
-    },
-    true,
-    ['verify'],
-  )
+async function importPublicKey(publicKeyRawB64Url: string) {
+  return crypto.subtle.importKey('raw', decodeBase64Url(publicKeyRawB64Url), { name: 'Ed25519' }, true, ['verify'])
 }
 
 async function importPrivateKey(privateKeyPkcs8B64: string) {
-  return crypto.subtle.importKey(
-    'pkcs8',
-    decodeBase64(privateKeyPkcs8B64),
-    {
-      name: 'ECDSA',
-      namedCurve: 'P-256',
-    },
-    true,
-    ['sign'],
-  )
+  return crypto.subtle.importKey('pkcs8', decodeBase64(privateKeyPkcs8B64), { name: 'Ed25519' }, true, ['sign'])
 }
 
 function loadPersistedDevice(): PersistedGatewayDevice | null {
@@ -175,26 +174,20 @@ export async function getOrCreateGatewayDeviceIdentity(): Promise<GatewayDeviceI
   const persisted = loadPersistedDevice()
 
   if (persisted) {
-    await importPublicKey(persisted.publicKeySpkiB64)
+    const derivedId = await sha256Hex(decodeBase64Url(persisted.publicKeyRawB64Url))
+    await importPublicKey(persisted.publicKeyRawB64Url)
     const privateKey = await importPrivateKey(persisted.privateKeyPkcs8B64)
 
     return {
-      id: persisted.id,
-      publicKey: persisted.publicKeySpkiB64,
+      id: derivedId,
+      publicKey: persisted.publicKeyRawB64Url,
       token: persisted.token,
       tokenScopes: persisted.tokenScopes,
       tokenRole: persisted.tokenRole,
       async signChallenge(payload: string) {
-        const signature = await crypto.subtle.sign(
-          {
-            name: 'ECDSA',
-            hash: 'SHA-256',
-          },
-          privateKey,
-          new TextEncoder().encode(payload),
-        )
+        const signature = await crypto.subtle.sign('Ed25519', privateKey, new TextEncoder().encode(payload))
 
-        return encodeBase64(new Uint8Array(signature))
+        return encodeBase64Url(new Uint8Array(signature))
       },
       async saveIssuedToken(token, meta) {
         const normalizedToken = normalizeIssuedToken(token)
@@ -205,6 +198,7 @@ export async function getOrCreateGatewayDeviceIdentity(): Promise<GatewayDeviceI
 
         persistDevice({
           ...persisted,
+          id: derivedId,
           token: normalizedToken,
           tokenScopes: meta?.scopes,
           tokenRole: meta?.role,
@@ -214,18 +208,13 @@ export async function getOrCreateGatewayDeviceIdentity(): Promise<GatewayDeviceI
     }
   }
 
-  const keyPair = await crypto.subtle.generateKey(
-    {
-      name: 'ECDSA',
-      namedCurve: 'P-256',
-    },
-    true,
-    ['sign', 'verify'],
-  )
+  const keyPair = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify'])
+  const publicKeyRaw = await exportRawPublicKey(keyPair.publicKey)
+  const derivedId = await sha256Hex(publicKeyRaw)
 
   const created: PersistedGatewayDevice = {
-    id: createDeviceId(),
-    publicKeySpkiB64: await exportPublicKey(keyPair.publicKey),
+    id: derivedId,
+    publicKeyRawB64Url: encodeBase64Url(publicKeyRaw),
     privateKeyPkcs8B64: await exportPrivateKey(keyPair.privateKey),
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -235,18 +224,11 @@ export async function getOrCreateGatewayDeviceIdentity(): Promise<GatewayDeviceI
 
   return {
     id: created.id,
-    publicKey: created.publicKeySpkiB64,
+    publicKey: created.publicKeyRawB64Url,
     async signChallenge(payload: string) {
-      const signature = await crypto.subtle.sign(
-        {
-          name: 'ECDSA',
-          hash: 'SHA-256',
-        },
-        keyPair.privateKey,
-        new TextEncoder().encode(payload),
-      )
+      const signature = await crypto.subtle.sign('Ed25519', keyPair.privateKey, new TextEncoder().encode(payload))
 
-      return encodeBase64(new Uint8Array(signature))
+      return encodeBase64Url(new Uint8Array(signature))
     },
     async saveIssuedToken(token, meta) {
       const normalizedToken = normalizeIssuedToken(token)

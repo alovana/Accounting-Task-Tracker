@@ -44,21 +44,13 @@ export function useOfficeRuntime(scenarioId: keyof typeof scenarioPresets) {
         })
         const snapshot = await transport.fetchOfficeSnapshot()
 
-        if (!cancelled) {
-          setGatewayScenario(buildScenarioFromGateway(snapshot))
-          setRuntimeStatus(
-            snapshot
-              ? {
-                  connection: 'live',
-                  detail: 'Reading live Gateway snapshot and mapping sessions into workers.',
-                  lastUpdatedAt: Date.now(),
-                }
-              : {
-                  connection: 'fallback',
-                  detail: 'Gateway returned no usable office snapshot, showing local fallback scene.',
-                  lastUpdatedAt: Date.now(),
-                },
-          )
+        if (!cancelled && !snapshot) {
+          setGatewayScenario(buildScenarioFromGateway(null))
+          setRuntimeStatus({
+            connection: 'fallback',
+            detail: 'Gateway returned no usable office snapshot, showing local fallback scene.',
+            lastUpdatedAt: Date.now(),
+          })
         }
 
       } catch (error) {

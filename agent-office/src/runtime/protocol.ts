@@ -81,6 +81,7 @@ export type GatewayHelloOk = {
   }
   snapshot?: {
     presence?: GatewayPresenceEntry[]
+    sessions?: Array<Record<string, unknown>>
     sessionDefaults?: {
       defaultAgentId?: string
       mainKey?: string
