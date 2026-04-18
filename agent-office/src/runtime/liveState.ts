@@ -8,6 +8,13 @@ export type RuntimeStatus = {
   connection: RuntimeConnectionState
   detail: string
   lastUpdatedAt?: number
+  diagnostics?: {
+    authMode?: string
+    availableMethods?: string[]
+    availableEvents?: string[]
+    sessionShapeVerified?: boolean
+    presenceShapeVerified?: boolean
+  }
 }
 
 export function formatRelativeTime(timestampMs?: number, now = Date.now()) {

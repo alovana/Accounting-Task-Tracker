@@ -388,10 +388,14 @@ class WebSocketGatewayTransport implements GatewayTransport {
 
   private async ensureOperatorHello() {
     if (this.helloConnected) {
-      return
+      return {
+        authMode: undefined,
+        methods: [] as string[],
+        events: [] as string[],
+      }
     }
 
-    const hello = await this.client.connectAsOperator(
+    const { hello, authMode } = await this.client.connectAsOperator(
       resolveGatewayConnectOptions({
         clientId: 'gateway-client',
         clientMode: 'ui',
@@ -407,16 +411,26 @@ class WebSocketGatewayTransport implements GatewayTransport {
     this.helloConnected = true
     this.presenceEntries = hello.snapshot?.presence ?? this.presenceEntries
 
+    const methods = hello.features?.methods ?? []
+    const events = hello.features?.events ?? []
+
     console.info('[Agent Office] Gateway operator connection established', {
-      discoveredMethods: hello.features?.methods?.filter((method) =>
+      authMode,
+      discoveredMethods: methods.filter((method) =>
         ['sessions.list', 'sessions.preview', 'sessions.get', 'system-presence', 'sessions.subscribe'].includes(method),
       ),
-      discoveredEvents: hello.features?.events?.filter((event) =>
+      discoveredEvents: events.filter((event) =>
         ['sessions.changed', 'session.message', 'presence', 'chat'].includes(event),
       ),
     })
 
-    await this.ensureSubscriptions(hello.features?.methods ?? [])
+    await this.ensureSubscriptions(methods)
+
+    return {
+      authMode,
+      methods,
+      events,
+    }
   }
 
   private async ensureSubscriptions(methods: string[]) {
@@ -472,7 +486,7 @@ class WebSocketGatewayTransport implements GatewayTransport {
 
     this.refreshPromise = (async () => {
       try {
-        await this.ensureOperatorHello()
+        const helloMeta = await this.ensureOperatorHello()
 
         const [presenceResult, sessionListResult] = await Promise.all([
           this.client.sendRequest<GatewayPresenceEntry[]>('system-presence', {}),
@@ -490,6 +504,13 @@ class WebSocketGatewayTransport implements GatewayTransport {
           connection: 'live',
           detail,
           lastUpdatedAt: Date.now(),
+          diagnostics: {
+            authMode: helloMeta.authMode,
+            availableMethods: helloMeta.methods,
+            availableEvents: helloMeta.events,
+            sessionShapeVerified: Array.isArray(sessionListResult.sessions),
+            presenceShapeVerified: Array.isArray(presenceResult),
+          },
         })
       } catch (error) {
         console.warn('[Agent Office] Gateway snapshot fetch failed, falling back to mock snapshot', error)

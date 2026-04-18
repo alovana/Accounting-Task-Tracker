@@ -264,7 +264,11 @@ export class GatewayWsClient {
     }
 
     try {
-      return (await attemptConnect(options)).response
+      const result = await attemptConnect(options)
+      return {
+        hello: result.response,
+        authMode: result.authMode,
+      }
     } catch (error) {
       const hasDeviceToken = Boolean(normalizeCredential(options.deviceToken) ?? normalizeCredential(device.token))
       const primaryAuth = resolveConnectAuth(options, device.token)
@@ -280,16 +284,19 @@ export class GatewayWsClient {
         recommendedNextStep: error instanceof GatewayRequestError ? error.details?.recommendedNextStep : undefined,
       })
 
-      return (
-        await attemptConnect(
-          {
-            ...options,
-            gatewayToken: undefined,
-            gatewayPassword: undefined,
-          },
-          'shared-secret-rejected-retrying-with-device-token',
-        )
-      ).response
+      const result = await attemptConnect(
+        {
+          ...options,
+          gatewayToken: undefined,
+          gatewayPassword: undefined,
+        },
+        'shared-secret-rejected-retrying-with-device-token',
+      )
+
+      return {
+        hello: result.response,
+        authMode: result.authMode,
+      }
     }
   }
 
