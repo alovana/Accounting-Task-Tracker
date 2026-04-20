@@ -51,8 +51,8 @@ export async function AppShell({ children }: AppShellProps) {
               </div>
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-white to-sky-50 px-4 py-3 text-right shadow-[0_18px_35px_-28px_rgba(30,64,175,0.45)]">
-                  <p className="text-sm font-semibold text-slate-800">{user?.email ?? "guest"}</p>
-                  <p className="text-xs text-slate-500">session active</p>
+                  <p className="text-sm font-semibold text-slate-800">{user?.email ?? "-"}</p>
+                  <p className="text-xs text-slate-500">{user?.fullName ?? "ไม่ได้เข้าสู่ระบบ"}</p>
                 </div>
                 <RoleAccessBadge role={user?.role ?? "staff"} />
                 <LogoutButton />

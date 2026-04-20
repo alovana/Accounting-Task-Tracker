@@ -15,14 +15,14 @@ import { getEnabledRuleCount, getNotificationStats } from "@/lib/phase5/selector
 import { getNotificationLogs, getNotificationRules } from "@/lib/supabase/queries";
 
 const readinessItems = [
-  "role-based access scaffold พร้อมสำหรับต่อยอด auth จริง",
+  "Supabase Auth และ session cookie ถูกเชื่อมต่อสำหรับใช้งานจริงแล้ว",
+  "กำหนดบทบาท admin, manager, staff ผ่านตาราง user_profiles",
   "query layer รองรับ mock-to-Supabase fallback ครบทุก phase หลัก",
-  "มี schema แยกตาม Phase 2-5 สำหรับนำไปรันใน Supabase",
-  "dashboard, reports, notifications และ settings พร้อมสำหรับ MVP demo",
-  "project status และ phase status docs ถูกอัปเดตแล้ว",
+  "มี schema แยกตาม Phase 2-6 สำหรับนำไปรันใน Supabase",
+  "dashboard, reports, notifications และ settings พร้อมสำหรับ production rollout",
 ];
 
-const schemaFiles = ["phase2-schema.sql", "phase3-schema.sql", "phase5-schema.sql"];
+const schemaFiles = ["phase2-schema.sql", "phase3-schema.sql", "phase5-schema.sql", "phase6-auth-schema.sql"];
 
 export default async function SettingsPage() {
   await requirePermission("manage_settings");

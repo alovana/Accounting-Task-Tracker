@@ -2,13 +2,20 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { findDemoUserByCredentials } from "@/lib/auth/demo-users";
+import { sessionCookieNames } from "@/lib/auth/session";
+import { getSupabaseAuthClient, getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type LoginActionState = {
   error?: string;
 };
 
-const SESSION_COOKIE_NAME = "att_session";
+const sessionCookieOptions = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 7,
+};
 
 export async function loginAction(
   _prevState: LoginActionState,
@@ -21,31 +28,53 @@ export async function loginAction(
     return { error: "กรุณากรอกอีเมลและรหัสผ่าน" };
   }
 
-  const user = findDemoUserByCredentials(email, password);
+  try {
+    const authClient = getSupabaseAuthClient();
+    const { data, error } = await authClient.auth.signInWithPassword({ email, password });
 
-  if (!user) {
-    return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
+    if (error || !data.session || !data.user) {
+      return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีของคุณยังไม่ได้รับสิทธิ์เข้าใช้งาน" };
+    }
+
+    const supabase = getSupabaseServerClient();
+    const { data: profile, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("id, active")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    if (profileError || !profile || !profile.active) {
+      await authClient.auth.signOut();
+      return { error: "บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าใช้งานระบบ กรุณาติดต่อผู้ดูแลระบบ" };
+    }
+
+    const cookieStore = await cookies();
+    cookieStore.set(sessionCookieNames.accessToken, data.session.access_token, sessionCookieOptions);
+    cookieStore.set(sessionCookieNames.refreshToken, data.session.refresh_token, sessionCookieOptions);
+  } catch (error) {
+    console.error("Failed to sign in with Supabase Auth", error);
+    return { error: "ไม่สามารถเข้าสู่ระบบได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
   }
-
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, JSON.stringify({
-    id: user.id,
-    email: user.email,
-    fullName: user.fullName,
-    role: user.role,
-  }), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: false,
-    path: "/",
-    maxAge: 60 * 60 * 8,
-  });
 
   redirect("/dashboard");
 }
 
 export async function logoutAction() {
   const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE_NAME);
+  const accessToken = cookieStore.get(sessionCookieNames.accessToken)?.value;
+  const refreshToken = cookieStore.get(sessionCookieNames.refreshToken)?.value;
+
+  if (accessToken && refreshToken) {
+    try {
+      const authClient = getSupabaseAuthClient();
+      await authClient.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      await authClient.auth.signOut();
+    } catch (error) {
+      console.error("Failed to sign out from Supabase Auth", error);
+    }
+  }
+
+  cookieStore.delete(sessionCookieNames.accessToken);
+  cookieStore.delete(sessionCookieNames.refreshToken);
   redirect("/login");
 }

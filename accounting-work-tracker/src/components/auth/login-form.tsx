@@ -24,7 +24,7 @@ export function LoginForm() {
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">เข้าสู่ระบบ</h1>
         <p className="mt-1 text-sm text-slate-500">
-          ใช้อีเมลและรหัสผ่านของทีมงานเพื่อเข้าใช้งานระบบ
+          ใช้อีเมลบริษัทและรหัสผ่านของคุณเพื่อเข้าใช้งานระบบติดตามงานบัญชี
         </p>
       </div>
 
@@ -42,6 +42,7 @@ export function LoginForm() {
           }
           placeholder="name@company.com"
           className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          autoComplete="email"
         />
       </div>
 
@@ -50,12 +51,7 @@ export function LoginForm() {
           <label className="text-sm font-medium text-slate-700" htmlFor="password">
             รหัสผ่าน
           </label>
-          <button
-            type="button"
-            className="text-sm font-medium text-blue-600 hover:text-blue-700"
-          >
-            ลืมรหัสผ่าน
-          </button>
+          <span className="text-sm text-slate-400">ติดต่อผู้ดูแลระบบหากเข้าใช้งานไม่ได้</span>
         </div>
         <input
           id="password"
@@ -67,6 +63,7 @@ export function LoginForm() {
           }
           placeholder="••••••••"
           className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          autoComplete="current-password"
         />
       </div>
 
@@ -82,19 +79,10 @@ export function LoginForm() {
         <div className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">{state.error}</div>
       ) : null}
 
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-        <p className="font-medium text-slate-800">บัญชีทดสอบ</p>
-        <div className="mt-2 space-y-1 text-xs text-slate-600">
-          <p>admin@company.com / admin1234</p>
-          <p>manager1@company.com / manager1234</p>
-          <p>staff1@company.com / staff1234</p>
-        </div>
-      </div>
-
       <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-        <p className="font-medium text-slate-800">สถานะตอนนี้</p>
+        <p className="font-medium text-slate-800">การเข้าใช้งาน</p>
         <p className="mt-1">
-          หน้านี้เป็น UI สำหรับ Phase 1 เพื่อเตรียม auth flow ก่อนเชื่อม Supabase Auth
+          ระบบจะตรวจสอบสิทธิ์ผ่าน Supabase Auth และกำหนดบทบาทการใช้งานตามบัญชีที่ผู้ดูแลระบบเปิดสิทธิ์ไว้
         </p>
       </div>
     </form>
