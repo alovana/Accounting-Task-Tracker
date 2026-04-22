@@ -26,6 +26,10 @@ import {
 } from "@/lib/supabase/queries";
 import { buildMonthlyGenerationPreview } from "@/lib/work-generation";
 
+function isStaffScopedUser(role: string) {
+  return role === "staff";
+}
+
 export default async function WorkCyclesPage() {
   const currentUser = await requirePermission("manage_work_cycles");
   const [workCycles, workItems, workItemUpdates, customers, checklistTemplates, checklistTemplateItems] = await Promise.all([
@@ -37,12 +41,33 @@ export default async function WorkCyclesPage() {
     getChecklistTemplateItems(),
   ]);
 
-  const summary = getWorkCycleSummary(workCycles, workItems);
-  const blockedItems = getBlockedWorkItems(workItems);
-  const latestUpdateMap = getLatestWorkItemUpdateMap(workItemUpdates);
+  const isStaffView = isStaffScopedUser(currentUser.role);
+  const visibleCustomers = isStaffView
+    ? customers.filter(
+        (customer) =>
+          customer.assignedUserId === currentUser.id ||
+          customer.managerUserId === currentUser.id ||
+          customer.assignedUserName === currentUser.fullName ||
+          customer.managerUserName === currentUser.fullName,
+      )
+    : customers;
+  const visibleCustomerIds = new Set(visibleCustomers.map((customer) => customer.id));
+  const visibleWorkCycles = workCycles.filter((cycle) => visibleCustomerIds.has(cycle.customerId));
+  const visibleWorkCycleIds = new Set(visibleWorkCycles.map((cycle) => cycle.id));
+  const visibleWorkItems = workItems.filter(
+    (item) =>
+      visibleWorkCycleIds.has(item.workCycleId) &&
+      (!isStaffView || item.assignedTo === currentUser.fullName),
+  );
+  const visibleWorkItemIds = new Set(visibleWorkItems.map((item) => item.id));
+  const visibleWorkItemUpdates = workItemUpdates.filter((update) => visibleWorkItemIds.has(update.workItemId));
+
+  const summary = getWorkCycleSummary(visibleWorkCycles, visibleWorkItems);
+  const blockedItems = getBlockedWorkItems(visibleWorkItems);
+  const latestUpdateMap = getLatestWorkItemUpdateMap(visibleWorkItemUpdates);
   const now = new Date();
   const generationPreview = buildMonthlyGenerationPreview({
-    customers,
+    customers: visibleCustomers,
     checklistTemplates,
     checklistTemplateItems,
     periodYear: now.getUTCFullYear(),
@@ -70,40 +95,61 @@ export default async function WorkCyclesPage() {
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
         <SectionCard
           title="Monthly Work Board"
-          description="ภาพรวมรอบงานรายลูกค้าสำหรับเดือนล่าสุด"
+          description={isStaffView ? "แสดงเฉพาะลูกค้าและงานที่คุณรับผิดชอบ" : "ภาพรวมรอบงานรายลูกค้าสำหรับเดือนล่าสุด พร้อมย่อรายละเอียดเพื่อลดการเลื่อนหน้าจอ"}
         >
-          {workCycles.length === 0 ? (
+          <div className="mb-4 flex flex-wrap gap-2 text-xs text-slate-500">
+            <span className="rounded-full bg-slate-100 px-3 py-1">
+              {isStaffView ? `ลูกค้าที่รับผิดชอบ ${visibleWorkCycles.length} ราย` : `ลูกค้าทั้งหมด ${visibleWorkCycles.length} ราย`}
+            </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1">งานที่เห็น {visibleWorkItems.length} รายการ</span>
+            {!isStaffView ? (
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">เปิดดูเฉพาะลูกค้าที่ต้องการได้</span>
+            ) : null}
+          </div>
+          {visibleWorkCycles.length === 0 ? (
             <EmptyState
               title="ยังไม่มีรอบงาน"
               description="ระบบจะสร้าง work cycles จาก checklist templates ในรอบถัดไป"
             />
           ) : (
             <div className="space-y-4">
-              {workCycles.map((cycle) => {
-                const relatedItems = getWorkItemsByCycle(workItems, cycle.id);
+              {visibleWorkCycles.map((cycle, index) => {
+                const relatedItems = getWorkItemsByCycle(visibleWorkItems, cycle.id);
+                const completedCount = relatedItems.filter((item) => item.status === "completed" || item.status === "skipped").length;
+                const openByDefault = isStaffView || index < 3;
 
                 return (
-                  <article key={cycle.id} className="rounded-2xl bg-slate-50 p-5">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <h3 className="text-base font-semibold text-slate-900">{cycle.customerName}</h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                          รอบงาน {cycle.periodMonth}/{cycle.periodYear} · generated {cycle.generatedAt}
-                        </p>
+                  <details key={cycle.id} open={openByDefault} className="group rounded-2xl border border-slate-200 bg-slate-50">
+                    <summary className="cursor-pointer list-none p-5">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-semibold text-slate-900">{cycle.customerName}</h3>
+                            <span className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-500">{relatedItems.length} งาน</span>
+                            <span className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-500">เสร็จ {completedCount}/{relatedItems.length || 0}</span>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-500">
+                            รอบงาน {cycle.periodMonth}/{cycle.periodYear} · generated {cycle.generatedAt}
+                          </p>
+                        </div>
+                        <div className="text-left md:text-right">
+                          <div className="flex items-center gap-2 md:justify-end">
+                            <WorkCycleStatusBadge status={cycle.status} />
+                            <span className="text-xs text-slate-400 group-open:hidden">กดเพื่อดูรายละเอียด</span>
+                            <span className="hidden text-xs text-slate-400 group-open:inline">ซ่อนรายละเอียด</span>
+                          </div>
+                          <p className="mt-2 text-xs text-slate-500">
+                            แนะนำจาก work items: {getRecommendedCycleStatus(relatedItems) === cycle.status ? "สอดคล้องแล้ว" : "ควรปรับสถานะรอบงาน"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <WorkCycleStatusBadge status={cycle.status} />
-                        <p className="mt-2 text-xs text-slate-500">
-                          แนะนำจาก work items: {getRecommendedCycleStatus(relatedItems) === cycle.status ? "สอดคล้องแล้ว" : "ควรปรับสถานะรอบงาน"}
-                        </p>
-                      </div>
-                    </div>
+                    </summary>
 
-                    <div className="mt-4 grid gap-3">
+                    <div className="grid gap-3 border-t border-slate-200 px-5 pb-5 pt-4">
                       {relatedItems.length === 0 ? (
                         <EmptyState
                           title="ยังไม่มีงานย่อยในรอบนี้"
-                          description="เมื่อระบบสร้าง work items จาก template แล้ว รายการจะแสดงในส่วนนี้"
+                          description={isStaffView ? "ยังไม่มีงานที่ assign ให้คุณในรอบนี้" : "เมื่อระบบสร้าง work items จาก template แล้ว รายการจะแสดงในส่วนนี้"}
                         />
                       ) : (
                         relatedItems.map((item) => (
@@ -152,7 +198,7 @@ export default async function WorkCyclesPage() {
                         ))
                       )}
                     </div>
-                  </article>
+                  </details>
                 );
               })}
             </div>
@@ -208,13 +254,13 @@ export default async function WorkCyclesPage() {
             title="Status Update Flow"
             description="ประวัติการอัปเดตสถานะของ work items"
           >
-            {workItemUpdates.length === 0 ? (
+            {visibleWorkItemUpdates.length === 0 ? (
               <EmptyState
                 title="ยังไม่มีประวัติการอัปเดต"
                 description="เมื่อเริ่มมีการเปลี่ยนสถานะงาน ระบบจะแสดงประวัติในส่วนนี้"
               />
             ) : (
-              <StatusUpdateList updates={workItemUpdates} />
+              <StatusUpdateList updates={visibleWorkItemUpdates} />
             )}
           </SectionCard>
 
