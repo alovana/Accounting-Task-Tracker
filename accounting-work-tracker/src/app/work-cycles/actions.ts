@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { getRecommendedCycleStatus } from "@/lib/phase3/selectors";
 import { getNextAllowedStatuses } from "@/lib/phase3/status-mappers";
-import { getWorkItems } from "@/lib/supabase/queries";
+import { getWorkCycles, getNotificationRules, getWorkItems } from "@/lib/supabase/queries";
+import { buildLineNotificationMessage } from "@/lib/phase5/line-message";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { WorkItemStatus } from "@/lib/mock/phase3-data";
+import type { NotificationEventType } from "@/types/notifications";
 
 type UpdateStatusActionState = {
   success?: boolean;
@@ -67,7 +69,11 @@ export async function updateWorkItemStatusAction(
     return { error: updateLogError.message || "บันทึกประวัติไม่สำเร็จ" };
   }
 
-  const workItems = await getWorkItems();
+  const [workItems, workCycles, notificationRules] = await Promise.all([
+    getWorkItems(),
+    getWorkCycles(),
+    getNotificationRules(),
+  ]);
   const cycleItems = workItems
     .filter((item) => item.workCycleId === workCycleId)
     .map((item) =>
@@ -80,6 +86,8 @@ export async function updateWorkItemStatusAction(
           }
         : item,
     );
+  const updatedWorkItem = cycleItems.find((item) => item.id === workItemId);
+  const workCycle = workCycles.find((item) => item.id === workCycleId);
   const recommendedStatus = getRecommendedCycleStatus(cycleItems);
 
   const { error: cycleError } = await supabase
@@ -94,8 +102,40 @@ export async function updateWorkItemStatusAction(
     return { error: cycleError.message || "อัปเดต work cycle ไม่สำเร็จ" };
   }
 
+  const eventTypeMap: Partial<Record<WorkItemStatus, NotificationEventType>> = {
+    completed: "completed",
+    blocked: "blocked",
+  };
+  const eventType = eventTypeMap[nextStatus];
+  const shouldQueueLineNotification = notificationRules.some(
+    (rule) => rule.enabled && rule.channel === "line_oa" && rule.eventType === eventType,
+  );
+
+  if (eventType && updatedWorkItem && shouldQueueLineNotification) {
+    const message = buildLineNotificationMessage({
+      eventType,
+      customerName: workCycle?.customerName ?? "-",
+      workItemTitle: updatedWorkItem.title,
+      blockedReason: nextStatus === "blocked" ? comment : undefined,
+      dueDate: updatedWorkItem.dueDate,
+    });
+
+    const { error: notificationError } = await supabase.from("line_notifications").insert({
+      event_type: eventType,
+      target_type: "work_item",
+      target_id: workItemId,
+      message,
+      status: "queued",
+    });
+
+    if (notificationError) {
+      return { error: notificationError.message || "เพิ่มคิว LINE notification ไม่สำเร็จ" };
+    }
+  }
+
   revalidatePath("/work-cycles");
   revalidatePath("/dashboard");
+  revalidatePath("/settings");
 
   return {
     success: true,
