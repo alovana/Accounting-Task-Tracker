@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { RoleAccessBadge } from "@/components/auth/role-access-badge";
+import { canAccess } from "@/lib/auth/permissions";
 import { getCurrentSessionUser } from "@/lib/auth/session";
 import { APP_NAME } from "@/lib/constants";
 
@@ -9,16 +10,17 @@ type AppShellProps = {
 };
 
 const navItems = [
-  { label: "แดชบอร์ด", href: "/dashboard" },
-  { label: "ลูกค้า", href: "/customers" },
-  { label: "เช็กลิสต์", href: "/checklists" },
-  { label: "งานรายเดือน", href: "/work-cycles" },
-  { label: "รายงาน", href: "/reports" },
-  { label: "ตั้งค่า", href: "/settings" },
-];
+  { label: "แดชบอร์ด", href: "/dashboard", permission: "view_dashboard" },
+  { label: "ลูกค้า", href: "/customers", permission: "manage_customers" },
+  { label: "เช็กลิสต์", href: "/checklists", permission: "manage_checklists" },
+  { label: "งานรายเดือน", href: "/work-cycles", permission: "manage_work_cycles" },
+  { label: "รายงาน", href: "/reports", permission: "view_reports" },
+  { label: "ตั้งค่า", href: "/settings", permission: "manage_settings" },
+] as const;
 
 export async function AppShell({ children }: AppShellProps) {
   const user = await getCurrentSessionUser();
+  const visibleNavItems = navItems.filter((item) => (user ? canAccess(user.role, item.permission) : false));
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.18),_transparent_32%),linear-gradient(180deg,_#eff6ff_0%,_#f8fafc_42%,_#e0f2fe_100%)] text-slate-900">
@@ -30,7 +32,7 @@ export async function AppShell({ children }: AppShellProps) {
             <p className="mt-2 text-sm text-slate-300">Track accounting workflows, deadlines, and team progress in one place.</p>
           </div>
           <nav className="space-y-2 px-4 py-5">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
