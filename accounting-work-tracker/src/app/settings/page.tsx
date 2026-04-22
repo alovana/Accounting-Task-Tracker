@@ -6,6 +6,7 @@ import { NotificationIssueList } from "@/components/phase5/notification-issue-li
 import { NotificationLogList } from "@/components/phase5/notification-log-list";
 import { NotificationPreviewList } from "@/components/phase5/notification-preview-list";
 import { NotificationRuleList } from "@/components/phase5/notification-rule-list";
+import { LineDispatchForm } from "@/components/phase5/line-dispatch-form";
 import { LineTestForm } from "@/components/phase5/line-test-form";
 import { DeploymentReadinessCard } from "@/components/phase6/deployment-readiness-card";
 import { ReadinessChecklist } from "@/components/phase6/readiness-checklist";
@@ -39,6 +40,7 @@ export default async function SettingsPage() {
   const envConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
+  const lineConfigured = Boolean(process.env.LINE_CHANNEL_ACCESS_TOKEN && process.env.LINE_TARGET_GROUP_ID);
 
   return (
     <AppShell>
@@ -139,6 +141,15 @@ export default async function SettingsPage() {
         </SectionCard>
 
         <SectionCard
+          title="LINE OA Manual Dispatch"
+          description={lineConfigured ? "พร้อมยิง queued notifications ไปที่ LINE group ปลายทาง" : "ต้องตั้งค่า LINE env ก่อน จึงจะส่ง queued notifications ได้"}
+        >
+          <LineDispatchForm />
+        </SectionCard>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <SectionCard
           title="Failed Deliveries"
           description="ดูรายการแจ้งเตือนที่ล้มเหลวเพื่อใช้ debug การเชื่อม LINE OA"
         >
@@ -150,6 +161,18 @@ export default async function SettingsPage() {
           ) : (
             <NotificationIssueList logs={failedLogs} />
           )}
+        </SectionCard>
+
+        <SectionCard
+          title="LINE Env Checklist"
+          description="ค่าที่ต้องตั้งเพื่อให้การส่งจริงทำงานผ่าน LINE Messaging API"
+        >
+          <ul className="space-y-2 text-sm text-slate-700">
+            <li>NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY</li>
+            <li>LINE_CHANNEL_ACCESS_TOKEN สำหรับ Messaging API</li>
+            <li>LINE_TARGET_GROUP_ID สำหรับ group หรือ room ปลายทาง</li>
+            <li>LINE_SENDER_NAME และ LINE_SENDER_ICON_URL ถ้าต้องการกำหนด sender</li>
+          </ul>
         </SectionCard>
       </div>
       </main>

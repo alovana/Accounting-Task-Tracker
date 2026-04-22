@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Accounting Work Tracker
 
-## Getting Started
+Next.js app for tracking accounting work items, operational readiness, and LINE OA notifications.
 
-First, run the development server:
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Required environment variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+LINE_CHANNEL_ACCESS_TOKEN=
+LINE_TARGET_GROUP_ID=
+LINE_SENDER_NAME=
+LINE_SENDER_ICON_URL=
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`LINE_SENDER_NAME` and `LINE_SENDER_ICON_URL` are optional and are used to attach a sender profile to outbound LINE messages.
 
-## Learn More
+## LINE OA outbound delivery
 
-To learn more about Next.js, take a look at the following resources:
+The app now supports a real server-side dispatch path:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Queue rows into `line_notifications`.
+   - From **Settings → LINE OA Test Queue**.
+   - Or automatically when qualifying work item status changes queue a notification.
+2. Run **Settings → LINE OA Manual Dispatch**.
+3. The server reads queued rows, claims them with `processing`, sends each one through the LINE Messaging API push endpoint, then updates the row to `sent` or `failed` with `sent_at` and `error_message`.
+4. Review **Notification Logs** and **Failed Deliveries** in Settings.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Database setup
 
-## Deploy on Vercel
+Apply the SQL files in `supabase/`, especially `supabase/phase5-schema.sql`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The Phase 5 schema includes:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `notification_rules`
+- `line_notifications`
+- `notification_status` values `queued`, `processing`, `sent`, `failed`
+
+## Notes
+
+- Delivery currently targets one configured LINE group or room per environment using `LINE_TARGET_GROUP_ID`.
+- Manual dispatch is the intended first production path. It can be automated later by calling the same server-side dispatcher from a scheduled job or trusted endpoint.

@@ -1,6 +1,6 @@
 create type notification_event_type as enum ('completed', 'blocked', 'overdue');
 create type notification_target_type as enum ('work_item', 'work_cycle');
-create type notification_status as enum ('queued', 'sent', 'failed');
+create type notification_status as enum ('queued', 'processing', 'sent', 'failed');
 create type notification_channel as enum ('line_oa', 'email', 'internal');
 
 create table if not exists notification_rules (
@@ -29,3 +29,5 @@ create table if not exists line_notifications (
 create index if not exists idx_notification_rules_event_type on notification_rules(event_type);
 create index if not exists idx_line_notifications_status on line_notifications(status);
 create index if not exists idx_line_notifications_event_type on line_notifications(event_type);
+
+alter type notification_status add value if not exists 'processing';

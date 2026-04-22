@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
 import { ROLE_OPTIONS, type AppRole } from "@/lib/constants";
+import { dispatchQueuedLineNotifications } from "@/lib/line/dispatcher";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type CreateUserActionState = {
@@ -11,6 +12,12 @@ export type CreateUserActionState = {
 };
 
 type QueueTestNotificationState = {
+  success?: boolean;
+  message?: string;
+  error?: string;
+};
+
+type DispatchLineQueueState = {
   success?: boolean;
   message?: string;
   error?: string;
@@ -122,4 +129,47 @@ export async function queueLineTestNotificationAction(
     success: true,
     message: "เพิ่ม test LINE notification เข้าคิวแล้ว",
   };
+}
+
+export async function dispatchLineQueueAction(
+  _prevState: DispatchLineQueueState,
+): Promise<DispatchLineQueueState> {
+  await requirePermission("manage_settings");
+
+  try {
+    const result = await dispatchQueuedLineNotifications();
+
+    revalidatePath("/settings");
+
+    if (result.attempted === 0) {
+      return {
+        success: true,
+        message: "ไม่มีรายการ queued ใน line_notifications",
+      };
+    }
+
+    const parts = [
+      `ตรวจสอบ ${result.attempted} รายการ`,
+      `ส่งสำเร็จ ${result.sent}`,
+      `ล้มเหลว ${result.failed}`,
+    ];
+
+    if (result.skipped > 0) {
+      parts.push(`ข้าม ${result.skipped}`);
+    }
+
+    if (result.configError) {
+      parts.push(`config error: ${result.configError}`);
+    }
+
+    return {
+      success: result.failed === 0,
+      message: parts.join(" | "),
+      error: result.failed > 0 ? "มีบางรายการส่งไม่สำเร็จ กรุณาตรวจสอบ Failed Deliveries" : undefined,
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "ไม่สามารถ dispatch LINE queue ได้",
+    };
+  }
 }

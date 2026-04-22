@@ -15,7 +15,7 @@ export type NotificationLog = {
   eventType: NotificationEventType;
   targetType: "work_item" | "work_cycle";
   targetName: string;
-  status: "queued" | "sent" | "failed";
+  status: "queued" | "processing" | "sent" | "failed";
   sentAt?: string;
   errorMessage?: string;
 };
