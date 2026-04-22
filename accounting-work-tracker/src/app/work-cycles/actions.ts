@@ -19,14 +19,38 @@ type UpdateStatusActionState = {
 };
 
 const ROLE_LABELS = new Set(["admin", "manager", "staff"]);
+const ROLE_DISPLAY: Record<AppRole, string> = {
+  admin: "ผู้ดูแลระบบ",
+  manager: "ผู้จัดการ",
+  staff: "พนักงาน",
+};
 
 function normalizePersonName(value?: string | null) {
   const trimmed = value?.trim();
-  if (!trimmed || trimmed === "-" || ROLE_LABELS.has(trimmed.toLowerCase())) {
+  if (!trimmed || trimmed === "-") {
     return "";
   }
 
-  return trimmed;
+  return ROLE_LABELS.has(trimmed.toLowerCase()) ? "" : trimmed;
+}
+
+function inferRole(value?: string | null): AppRole | undefined {
+  const trimmed = value?.trim().toLowerCase();
+  return trimmed && ROLE_LABELS.has(trimmed) ? (trimmed as AppRole) : undefined;
+}
+
+function buildAssigneeFallbackLabel(role?: AppRole, updatedBy?: string) {
+  const actorName = normalizePersonName(updatedBy);
+
+  if (actorName) {
+    return `${actorName} (ผู้ทำรายการล่าสุด)`;
+  }
+
+  if (role) {
+    return `ยังไม่ได้ผูกชื่อ${ROLE_DISPLAY[role]}ไว้กับลูกค้า`;
+  }
+
+  return "ยังไม่พบชื่อผู้รับผิดชอบ";
 }
 
 async function resolveUpdatedByDisplayName(rawUpdatedBy?: string) {
@@ -67,6 +91,7 @@ async function resolveWorkItemAssigneeName(
   supabase: ReturnType<typeof getSupabaseServerClient>,
   workItemId: string,
   fallbackAssignedTo?: string,
+  updatedBy?: string,
 ) {
   const fallback = normalizePersonName(fallbackAssignedTo);
 
@@ -77,7 +102,7 @@ async function resolveWorkItemAssigneeName(
     .maybeSingle();
 
   if (!workItem) {
-    return fallback || "-";
+    return fallback || buildAssigneeFallbackLabel(undefined, updatedBy);
   }
 
   const directProfileId = workItem.assigned_user_id;
@@ -95,9 +120,7 @@ async function resolveWorkItemAssigneeName(
     }
   }
 
-  const inferredRole = ROLE_LABELS.has((workItem.assigned_to_name || "").trim().toLowerCase())
-    ? ((workItem.assigned_to_name || "").trim().toLowerCase() as AppRole)
-    : undefined;
+  const inferredRole = inferRole(workItem.assigned_to_name);
 
   if (workItem.work_cycle_id && (workItem.template_item_id || inferredRole)) {
     const [{ data: templateItem }, { data: workCycle }] = await Promise.all([
@@ -140,7 +163,11 @@ async function resolveWorkItemAssigneeName(
     }
   }
 
-  return normalizePersonName(workItem.assigned_to_name) || fallback || "-";
+  return (
+    normalizePersonName(workItem.assigned_to_name) ||
+    fallback ||
+    buildAssigneeFallbackLabel(inferredRole, updatedBy)
+  );
 }
 
 export async function updateWorkItemStatusAction(
@@ -240,7 +267,12 @@ export async function updateWorkItemStatusAction(
   );
 
   if (eventType && updatedWorkItem && shouldQueueLineNotification) {
-    const assigneeName = await resolveWorkItemAssigneeName(supabase, workItemId, updatedWorkItem.assignedTo);
+    const assigneeName = await resolveWorkItemAssigneeName(
+      supabase,
+      workItemId,
+      updatedWorkItem.assignedTo,
+      updatedBy,
+    );
 
     const message = buildLineNotificationMessage({
       eventType,
