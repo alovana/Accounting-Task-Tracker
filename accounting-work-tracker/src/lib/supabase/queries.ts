@@ -3,6 +3,7 @@ import { workCycles, workItems, workItemUpdates } from "@/lib/mock/phase3-data";
 import { notificationLogs, notificationRules } from "@/lib/mock/phase5-data";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { WorkCycle, WorkItem, WorkItemUpdate } from "@/lib/mock/phase3-data";
+import type { AppRole } from "@/lib/constants";
 import type {
   BusinessType,
   ChecklistTemplate,
@@ -10,6 +11,13 @@ import type {
   Customer,
 } from "@/types/domain";
 import type { NotificationLog, NotificationRule } from "@/types/notifications";
+
+export type UserAssignmentOption = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: AppRole;
+};
 
 function shouldUseMockData() {
   return !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -90,6 +98,32 @@ export async function getCustomers(): Promise<Customer[]> {
     serviceStatus: item.service_status,
     notes: item.notes,
     active: item.active,
+  }));
+}
+
+export async function getAssignableUserProfiles(): Promise<UserAssignmentOption[]> {
+  if (shouldUseMockData()) {
+    return [];
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("id, full_name, email, role")
+    .eq("active", true)
+    .order("full_name", { ascending: true })
+    .order("email", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load assignable user profiles", error);
+    return [];
+  }
+
+  return (data || []).map((item) => ({
+    id: item.id,
+    fullName: item.full_name?.trim() || item.email || "-",
+    email: item.email || "",
+    role: item.role,
   }));
 }
 

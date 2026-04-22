@@ -3,13 +3,21 @@ import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { StatusBadge } from "@/components/phase2/status-badge";
+import { CustomerAssignmentForm } from "@/components/phase2/customer-assignment-form";
 import { requirePermission } from "@/lib/auth/session";
 import { getBusinessTypeName, getServiceStatusLabel } from "@/lib/mappers";
-import { getBusinessTypes, getCustomers } from "@/lib/supabase/queries";
+import { getAssignableUserProfiles, getBusinessTypes, getCustomers } from "@/lib/supabase/queries";
 
 export default async function CustomersPage() {
   await requirePermission("manage_customers");
-  const [businessTypes, customers] = await Promise.all([getBusinessTypes(), getCustomers()]);
+  const [businessTypes, customers, profiles] = await Promise.all([
+    getBusinessTypes(),
+    getCustomers(),
+    getAssignableUserProfiles(),
+  ]);
+
+  const staffOptions = profiles;
+  const managerOptions = profiles.filter((item) => item.role === "admin" || item.role === "manager");
 
   const summary = [
     { label: "ลูกค้าทั้งหมด", value: customers.length.toString() },
@@ -70,50 +78,52 @@ export default async function CustomersPage() {
 
         <SectionCard
           title="รายการลูกค้า"
-          description="แสดงข้อมูลลูกค้าเบื้องต้นสำหรับเตรียมต่อ CRUD และ assignment flow"
+          description="กำหนด staff owner และ manager owner ของแต่ละลูกค้าจาก user_profiles เพื่อให้การสร้างงานและ LINE notifications ใช้ชื่อจริงได้"
         >
           {customers.length === 0 ? (
             <EmptyState
               title="ยังไม่มีข้อมูลลูกค้า"
               description="เมื่อเชื่อม Supabase แล้ว ข้อมูลลูกค้าจะแสดงในส่วนนี้ทันที"
             />
+          ) : profiles.length === 0 ? (
+            <EmptyState
+              title="ยังไม่มี user profiles ที่พร้อม assign"
+              description="ไปที่ Settings เพื่อสร้างผู้ใช้งานก่อน แล้วกลับมากำหนด owner ให้ลูกค้า"
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-separate border-spacing-y-3">
-                <thead>
-                  <tr className="text-left text-sm text-slate-500">
-                    <th className="px-3">รหัส</th>
-                    <th className="px-3">ชื่อลูกค้า</th>
-                    <th className="px-3">ประเภทธุรกิจ</th>
-                    <th className="px-3">ผู้รับผิดชอบ</th>
-                    <th className="px-3">สถานะบริการ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map((item) => (
-                    <tr key={item.id} className="rounded-2xl bg-slate-50 text-sm text-slate-700">
-                      <td className="rounded-l-2xl px-3 py-4 font-medium text-slate-900">{item.code}</td>
-                      <td className="px-3 py-4">
-                        <p className="font-medium text-slate-900">{item.name}</p>
+            <div className="space-y-4">
+              {customers.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm text-slate-500">{item.code}</p>
+                        <h3 className="text-base font-semibold text-slate-900">{item.name}</h3>
                         <p className="mt-1 text-xs text-slate-500">Tax ID: {item.taxId}</p>
-                      </td>
-                      <td className="px-3 py-4">
-                        {getBusinessTypeName(item.businessTypeId, businessTypes)}
-                      </td>
-                      <td className="px-3 py-4">
-                        <p>{item.assignedUserName}</p>
-                        <p className="mt-1 text-xs text-slate-500">ผู้จัดการ: {item.managerUserName}</p>
-                      </td>
-                      <td className="rounded-r-2xl px-3 py-4">
-                        <StatusBadge
-                          label={getServiceStatusLabel(item.serviceStatus)}
-                          tone={item.serviceStatus === "onboarding" ? "amber" : "green"}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                        <span>{getBusinessTypeName(item.businessTypeId, businessTypes)}</span>
+                        <span className="text-slate-300">•</span>
+                        <span>Staff: {item.assignedUserName}</span>
+                        <span className="text-slate-300">•</span>
+                        <span>Manager: {item.managerUserName}</span>
+                      </div>
+                    </div>
+                    <StatusBadge
+                      label={getServiceStatusLabel(item.serviceStatus)}
+                      tone={item.serviceStatus === "onboarding" ? "amber" : "green"}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <CustomerAssignmentForm
+                      customer={item}
+                      staffOptions={staffOptions}
+                      managerOptions={managerOptions}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </SectionCard>
