@@ -15,12 +15,22 @@ const navItems = [
   { label: "เช็กลิสต์", href: "/checklists", permission: "manage_checklists" },
   { label: "งานรายเดือน", href: "/work-cycles", permission: "manage_work_cycles" },
   { label: "รายงาน", href: "/reports", permission: "view_reports" },
-  { label: "ตั้งค่า", href: "/settings", permission: "manage_settings" },
+  { label: "โปรไฟล์ / ตั้งค่า", href: "/settings" },
 ] as const;
 
 export async function AppShell({ children }: AppShellProps) {
   const user = await getCurrentSessionUser();
-  const visibleNavItems = navItems.filter((item) => (user ? canAccess(user.role, item.permission) : false));
+  const visibleNavItems = navItems.filter((item) => {
+    if (!user) {
+      return false;
+    }
+
+    if (!("permission" in item) || !item.permission) {
+      return true;
+    }
+
+    return canAccess(user.role, item.permission);
+  });
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.18),_transparent_32%),linear-gradient(180deg,_#eff6ff_0%,_#f8fafc_42%,_#e0f2fe_100%)] text-slate-900">

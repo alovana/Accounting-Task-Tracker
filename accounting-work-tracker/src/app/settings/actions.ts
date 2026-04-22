@@ -1,10 +1,11 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { requirePermission } from "@/lib/auth/session";
+import { requirePermission, requireSessionUser, sessionCookieNames } from "@/lib/auth/session";
 import { ROLE_OPTIONS, type AppRole } from "@/lib/constants";
 import { dispatchQueuedLineNotifications } from "@/lib/line/dispatcher";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAuthClient, getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type CreateUserActionState = {
   success?: string;
@@ -21,6 +22,19 @@ type DispatchLineQueueState = {
   success?: boolean;
   message?: string;
   error?: string;
+};
+
+export type ChangePasswordActionState = {
+  success?: string;
+  error?: string;
+};
+
+const sessionCookieOptions = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 7,
 };
 
 const initialState: CreateUserActionState = {};
@@ -129,6 +143,65 @@ export async function queueLineTestNotificationAction(
     success: true,
     message: "เพิ่ม test LINE notification เข้าคิวแล้ว",
   };
+}
+
+export async function changePasswordAction(
+  _prevState: ChangePasswordActionState,
+  formData: FormData,
+): Promise<ChangePasswordActionState> {
+  await requireSessionUser();
+
+  const password = String(formData.get("password") || "").trim();
+  const confirmPassword = String(formData.get("confirmPassword") || "").trim();
+
+  if (!password || !confirmPassword) {
+    return { error: "กรุณากรอกรหัสผ่านใหม่และยืนยันรหัสผ่าน" };
+  }
+
+  if (password.length < 8) {
+    return { error: "รหัสผ่านใหม่ควรมีอย่างน้อย 8 ตัวอักษร" };
+  }
+
+  if (password !== confirmPassword) {
+    return { error: "รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน" };
+  }
+
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get(sessionCookieNames.accessToken)?.value;
+  const refreshToken = cookieStore.get(sessionCookieNames.refreshToken)?.value;
+
+  if (!accessToken || !refreshToken) {
+    return { error: "session หมดอายุ กรุณาเข้าสู่ระบบใหม่แล้วลองอีกครั้ง" };
+  }
+
+  try {
+    const authClient = getSupabaseAuthClient();
+    const { data: sessionData, error: sessionError } = await authClient.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (sessionError || !sessionData.session) {
+      return { error: "ไม่สามารถยืนยัน session ปัจจุบันได้ กรุณาเข้าสู่ระบบใหม่" };
+    }
+
+    const { error: updateError } = await authClient.auth.updateUser({
+      password,
+    });
+
+    if (updateError) {
+      return { error: updateError.message || "ไม่สามารถเปลี่ยนรหัสผ่านได้" };
+    }
+
+    cookieStore.set(sessionCookieNames.accessToken, sessionData.session.access_token, sessionCookieOptions);
+    cookieStore.set(sessionCookieNames.refreshToken, sessionData.session.refresh_token, sessionCookieOptions);
+    revalidatePath("/settings");
+
+    return { success: "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว" };
+  } catch (error) {
+    console.error("Failed to change password", error);
+    return { error: "ไม่สามารถเปลี่ยนรหัสผ่านได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
 }
 
 export async function dispatchLineQueueAction(

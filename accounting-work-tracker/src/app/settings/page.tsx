@@ -11,7 +11,9 @@ import { LineTestForm } from "@/components/phase5/line-test-form";
 import { DeploymentReadinessCard } from "@/components/phase6/deployment-readiness-card";
 import { ReadinessChecklist } from "@/components/phase6/readiness-checklist";
 import { UserManagementForm } from "@/components/phase6/user-management-form";
-import { requirePermission } from "@/lib/auth/session";
+import { PasswordChangeForm } from "@/components/settings/password-change-form";
+import { canAccess } from "@/lib/auth/permissions";
+import { requireSessionUser } from "@/lib/auth/session";
 import { getLatestNotificationIssues, previewNotificationDispatch } from "@/lib/phase5/notification-engine";
 import { getEnabledRuleCount, getNotificationStats } from "@/lib/phase5/selectors";
 import { getNotificationLogs, getNotificationRules } from "@/lib/supabase/queries";
@@ -27,11 +29,11 @@ const readinessItems = [
 const schemaFiles = ["phase2-schema.sql", "phase3-schema.sql", "phase5-schema.sql", "phase6-auth-schema.sql"];
 
 export default async function SettingsPage() {
-  await requirePermission("manage_settings");
-  const [notificationRules, notificationLogs] = await Promise.all([
-    getNotificationRules(),
-    getNotificationLogs(),
-  ]);
+  const currentUser = await requireSessionUser();
+  const isAdmin = canAccess(currentUser.role, "manage_settings");
+  const [notificationRules, notificationLogs] = isAdmin
+    ? await Promise.all([getNotificationRules(), getNotificationLogs()])
+    : [[], []];
 
   const stats = getNotificationStats(notificationLogs);
   const enabledRules = getEnabledRuleCount(notificationRules);
@@ -45,136 +47,184 @@ export default async function SettingsPage() {
   return (
     <AppShell>
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <PageHeader
-        title="Settings & Readiness"
-        description="รวม notification settings, readiness checklist, และ deployment prep ในหน้าเดียว"
-        badge={envConfigured ? "Deployment env ready" : "Env setup pending"}
-      />
+        <PageHeader
+          title={isAdmin ? "Settings & Readiness" : "My Profile & Security"}
+          description={
+            isAdmin
+              ? "รวม system settings, readiness, notifications และ user administration ในหน้าเดียว"
+              : "จัดการข้อมูลบัญชีของคุณและเปลี่ยนรหัสผ่านด้วยตัวเอง"
+          }
+          badge={envConfigured ? "Deployment env ready" : "Env setup pending"}
+        />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
-        <SectionCard
-          title="Phase 6 Readiness Checklist"
-          description="สรุปความพร้อมด้าน role access, hardening เชิงแอป, responsive และ deployment prep"
-        >
-          <ReadinessChecklist items={readinessItems} />
-        </SectionCard>
+        <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <SectionCard
+            title="My Account"
+            description="ข้อมูลผู้ใช้ปัจจุบันและพื้นที่สำหรับดูแลความปลอดภัยของบัญชี"
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">ชื่อแสดงผล</p>
+                <p className="mt-2 text-base font-semibold text-slate-900">{currentUser.fullName}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">อีเมล</p>
+                <p className="mt-2 text-base font-semibold text-slate-900">{currentUser.email}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4 md:col-span-2">
+                <p className="text-sm text-slate-500">บทบาทปัจจุบัน</p>
+                <p className="mt-2 text-base font-semibold capitalize text-slate-900">{currentUser.role}</p>
+              </div>
+            </div>
+          </SectionCard>
 
-        <DeploymentReadinessCard envConfigured={envConfigured} schemaFiles={schemaFiles} />
-      </div>
-
-      <section className="grid gap-4 md:grid-cols-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">rules ทั้งหมด</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900">{notificationRules.length}</p>
+          <SectionCard
+            title="Change Password"
+            description="ทุกบทบาทสามารถเปลี่ยนรหัสผ่านของตนเองได้ทันทีผ่าน Supabase Auth"
+          >
+            <PasswordChangeForm />
+          </SectionCard>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">enabled rules</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900">{enabledRules}</p>
-        </div>
-        {stats.map((item) => (
-          <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">{item.label}</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{item.value}</p>
-          </div>
-        ))}
-      </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <SectionCard
-          title="Notification Rules"
-          description="กฎการแจ้งเตือนสำหรับ completed, blocked, และ overdue alerts"
-        >
-          {notificationRules.length === 0 ? (
-            <EmptyState
-              title="ยังไม่มี notification rules"
-              description="เพิ่มกฎการแจ้งเตือนเพื่อให้ระบบส่ง LINE OA ได้ในอนาคต"
-            />
-          ) : (
-            <NotificationRuleList rules={notificationRules} />
-          )}
-        </SectionCard>
+        {isAdmin ? (
+          <>
+            <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+              <SectionCard
+                title="Phase 6 Readiness Checklist"
+                description="สรุปความพร้อมด้าน role access, hardening เชิงแอป, responsive และ deployment prep"
+              >
+                <ReadinessChecklist items={readinessItems} />
+              </SectionCard>
 
-        <SectionCard
-          title="Notification Logs"
-          description="ดูสถานะการส่งแจ้งเตือนล่าสุดว่าคิวสำเร็จหรือมีปัญหาตรงไหน"
-        >
-          {notificationLogs.length === 0 ? (
-            <EmptyState
-              title="ยังไม่มี notification logs"
-              description="เมื่อระบบเริ่ม trigger notifications จะมีประวัติในส่วนนี้"
-            />
-          ) : (
-            <NotificationLogList logs={notificationLogs} />
-          )}
-        </SectionCard>
-      </div>
+              <DeploymentReadinessCard envConfigured={envConfigured} schemaFiles={schemaFiles} />
+            </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <SectionCard
-          title="Admin User Management"
-          description="สำหรับ admin เท่านั้น ใช้สร้างผู้ใช้งานใหม่พร้อม email, password, display name และ role ในจุดเดียว"
-        >
-          <UserManagementForm />
-        </SectionCard>
+            <section className="grid gap-4 md:grid-cols-5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm text-slate-500">rules ทั้งหมด</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{notificationRules.length}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm text-slate-500">enabled rules</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{enabledRules}</p>
+              </div>
+              {stats.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm text-slate-500">{item.label}</p>
+                  <p className="mt-2 text-3xl font-bold text-slate-900">{item.value}</p>
+                </div>
+              ))}
+            </section>
 
-        <SectionCard
-          title="Preview Messages"
-          description="พรีวิวข้อความแจ้งเตือนก่อนต่อยอดไปยัง LINE OA integration จริง"
-        >
-          {previews.length === 0 ? (
-            <EmptyState
-              title="ยังไม่มีข้อความตัวอย่าง"
-              description="เมื่อมี rules ที่เปิดใช้งาน ระบบจะสร้าง preview ได้ในส่วนนี้"
-            />
-          ) : (
-            <NotificationPreviewList items={previews} />
-          )}
-        </SectionCard>
-      </div>
+            <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+              <SectionCard
+                title="Notification Rules"
+                description="กฎการแจ้งเตือนสำหรับ completed, blocked, และ overdue alerts"
+              >
+                {notificationRules.length === 0 ? (
+                  <EmptyState
+                    title="ยังไม่มี notification rules"
+                    description="เพิ่มกฎการแจ้งเตือนเพื่อให้ระบบส่ง LINE OA ได้ในอนาคต"
+                  />
+                ) : (
+                  <NotificationRuleList rules={notificationRules} />
+                )}
+              </SectionCard>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <SectionCard
-          title="LINE OA Test Queue"
-          description="เพิ่มข้อความทดสอบเข้า line_notifications เพื่อเช็ก flow การคิวและ log"
-        >
-          <LineTestForm />
-        </SectionCard>
+              <SectionCard
+                title="Notification Logs"
+                description="ดูสถานะการส่งแจ้งเตือนล่าสุดว่าคิวสำเร็จหรือมีปัญหาตรงไหน"
+              >
+                {notificationLogs.length === 0 ? (
+                  <EmptyState
+                    title="ยังไม่มี notification logs"
+                    description="เมื่อระบบเริ่ม trigger notifications จะมีประวัติในส่วนนี้"
+                  />
+                ) : (
+                  <NotificationLogList logs={notificationLogs} />
+                )}
+              </SectionCard>
+            </div>
 
-        <SectionCard
-          title="LINE OA Manual Dispatch"
-          description={lineConfigured ? "พร้อมยิง queued notifications ไปที่ LINE group ปลายทาง" : "ต้องตั้งค่า LINE env ก่อน จึงจะส่ง queued notifications ได้"}
-        >
-          <LineDispatchForm />
-        </SectionCard>
-      </div>
+            <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+              <SectionCard
+                title="Admin User Management"
+                description="สำหรับ admin เท่านั้น ใช้สร้างผู้ใช้งานใหม่พร้อม email, password, display name และ role ในจุดเดียว"
+              >
+                <UserManagementForm />
+              </SectionCard>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <SectionCard
-          title="Failed Deliveries"
-          description="ดูรายการแจ้งเตือนที่ล้มเหลวเพื่อใช้ debug การเชื่อม LINE OA"
-        >
-          {failedLogs.length === 0 ? (
-            <EmptyState
-              title="ยังไม่มี failed deliveries"
-              description="ตอนนี้ยังไม่มีปัญหาการส่งแจ้งเตือน"
-            />
-          ) : (
-            <NotificationIssueList logs={failedLogs} />
-          )}
-        </SectionCard>
+              <SectionCard
+                title="Preview Messages"
+                description="พรีวิวข้อความแจ้งเตือนก่อนต่อยอดไปยัง LINE OA integration จริง"
+              >
+                {previews.length === 0 ? (
+                  <EmptyState
+                    title="ยังไม่มีข้อความตัวอย่าง"
+                    description="เมื่อมี rules ที่เปิดใช้งาน ระบบจะสร้าง preview ได้ในส่วนนี้"
+                  />
+                ) : (
+                  <NotificationPreviewList items={previews} />
+                )}
+              </SectionCard>
+            </div>
 
-        <SectionCard
-          title="LINE Env Checklist"
-          description="ค่าที่ต้องตั้งเพื่อให้การส่งจริงทำงานผ่าน LINE Messaging API"
-        >
-          <ul className="space-y-2 text-sm text-slate-700">
-            <li>NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY</li>
-            <li>LINE_CHANNEL_ACCESS_TOKEN สำหรับ Messaging API</li>
-            <li>LINE_TARGET_GROUP_ID สำหรับ group หรือ room ปลายทาง</li>
-            <li>LINE_SENDER_NAME และ LINE_SENDER_ICON_URL ถ้าต้องการกำหนด sender</li>
-          </ul>
-        </SectionCard>
-      </div>
+            <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+              <SectionCard
+                title="LINE OA Test Queue"
+                description="เพิ่มข้อความทดสอบเข้า line_notifications เพื่อเช็ก flow การคิวและ log"
+              >
+                <LineTestForm />
+              </SectionCard>
+
+              <SectionCard
+                title="LINE OA Manual Dispatch"
+                description={lineConfigured ? "พร้อมยิง queued notifications ไปที่ LINE group ปลายทาง" : "ต้องตั้งค่า LINE env ก่อน จึงจะส่ง queued notifications ได้"}
+              >
+                <LineDispatchForm />
+              </SectionCard>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+              <SectionCard
+                title="Failed Deliveries"
+                description="ดูรายการแจ้งเตือนที่ล้มเหลวเพื่อใช้ debug การเชื่อม LINE OA"
+              >
+                {failedLogs.length === 0 ? (
+                  <EmptyState
+                    title="ยังไม่มี failed deliveries"
+                    description="ตอนนี้ยังไม่มีปัญหาการส่งแจ้งเตือน"
+                  />
+                ) : (
+                  <NotificationIssueList logs={failedLogs} />
+                )}
+              </SectionCard>
+
+              <SectionCard
+                title="LINE Env Checklist"
+                description="ค่าที่ต้องตั้งเพื่อให้การส่งจริงทำงานผ่าน LINE Messaging API"
+              >
+                <ul className="space-y-2 text-sm text-slate-700">
+                  <li>NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY</li>
+                  <li>LINE_CHANNEL_ACCESS_TOKEN สำหรับ Messaging API</li>
+                  <li>LINE_TARGET_GROUP_ID สำหรับ group หรือ room ปลายทาง</li>
+                  <li>LINE_SENDER_NAME และ LINE_SENDER_ICON_URL ถ้าต้องการกำหนด sender</li>
+                </ul>
+              </SectionCard>
+            </div>
+          </>
+        ) : (
+          <SectionCard
+            title="Role-aware Access"
+            description="แยกสิทธิ์ให้พนักงานและผู้จัดการเข้าถึงเฉพาะสิ่งที่เกี่ยวกับตนเอง"
+          >
+            <ul className="space-y-3 text-sm text-slate-700">
+              <li>- Staff ใช้หน้านี้เพื่อดูข้อมูลบัญชีและเปลี่ยนรหัสผ่านด้วยตัวเอง</li>
+              <li>- Manager ใช้หน้านี้เพื่อดูแลบัญชีตัวเอง โดยงานติดตามปฏิบัติการอยู่ที่ Dashboard, Monthly Work และ Reports</li>
+              <li>- Admin จะเห็นส่วน system settings, notifications, readiness และ user management เพิ่มเติมในหน้านี้</li>
+            </ul>
+          </SectionCard>
+        )}
       </main>
     </AppShell>
   );

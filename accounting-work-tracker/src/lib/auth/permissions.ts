@@ -5,9 +5,6 @@ export const rolePermissions: Record<AppRole, string[]> = {
     "view_dashboard",
     "manage_customers",
     "manage_checklists",
-    "manage_work_cycles",
-    "view_reports",
-    "manage_notifications",
     "manage_settings",
   ],
   manager: [
