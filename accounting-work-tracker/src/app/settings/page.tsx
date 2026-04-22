@@ -9,6 +9,7 @@ import { NotificationRuleList } from "@/components/phase5/notification-rule-list
 import { LineTestForm } from "@/components/phase5/line-test-form";
 import { DeploymentReadinessCard } from "@/components/phase6/deployment-readiness-card";
 import { ReadinessChecklist } from "@/components/phase6/readiness-checklist";
+import { UserManagementForm } from "@/components/phase6/user-management-form";
 import { requirePermission } from "@/lib/auth/session";
 import { getLatestNotificationIssues, previewNotificationDispatch } from "@/lib/phase5/notification-engine";
 import { getEnabledRuleCount, getNotificationStats } from "@/lib/phase5/selectors";
@@ -108,6 +109,13 @@ export default async function SettingsPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <SectionCard
+          title="Admin User Management"
+          description="สำหรับ admin เท่านั้น ใช้สร้างผู้ใช้งานใหม่พร้อม email, password, display name และ role ในจุดเดียว"
+        >
+          <UserManagementForm />
+        </SectionCard>
+
+        <SectionCard
           title="Preview Messages"
           description="พรีวิวข้อความแจ้งเตือนก่อนต่อยอดไปยัง LINE OA integration จริง"
         >
@@ -120,16 +128,16 @@ export default async function SettingsPage() {
             <NotificationPreviewList items={previews} />
           )}
         </SectionCard>
+      </div>
 
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <SectionCard
           title="LINE OA Test Queue"
           description="เพิ่มข้อความทดสอบเข้า line_notifications เพื่อเช็ก flow การคิวและ log"
         >
           <LineTestForm />
         </SectionCard>
-      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <SectionCard
           title="Failed Deliveries"
           description="ดูรายการแจ้งเตือนที่ล้มเหลวเพื่อใช้ debug การเชื่อม LINE OA"

@@ -1,7 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requirePermission } from "@/lib/auth/session";
+import { ROLE_OPTIONS, type AppRole } from "@/lib/constants";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+
+export type CreateUserActionState = {
+  success?: string;
+  error?: string;
+};
 
 type QueueTestNotificationState = {
   success?: boolean;
@@ -9,10 +16,88 @@ type QueueTestNotificationState = {
   error?: string;
 };
 
+const initialState: CreateUserActionState = {};
+
+function isValidRole(role: string): role is AppRole {
+  return ROLE_OPTIONS.includes(role as AppRole);
+}
+
+export async function createUserAction(
+  _prevState: CreateUserActionState = initialState,
+  formData: FormData,
+): Promise<CreateUserActionState> {
+  await requirePermission("manage_settings");
+
+  const fullName = String(formData.get("fullName") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const password = String(formData.get("password") || "").trim();
+  const role = String(formData.get("role") || "").trim();
+
+  if (!fullName || !email || !password || !role) {
+    return { error: "กรุณากรอกชื่อ, อีเมล, รหัสผ่าน และบทบาทให้ครบ" };
+  }
+
+  if (!isValidRole(role)) {
+    return { error: "บทบาทที่เลือกไม่ถูกต้อง" };
+  }
+
+  if (password.length < 8) {
+    return { error: "รหัสผ่านควรมีอย่างน้อย 8 ตัวอักษร" };
+  }
+
+  const supabase = getSupabaseServerClient();
+
+  const { data: existingProfile } = await supabase
+    .from("user_profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingProfile) {
+    return { error: "อีเมลนี้มีอยู่ในระบบแล้ว" };
+  }
+
+  const { data: createdUser, error: createError } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
+    },
+  });
+
+  if (createError || !createdUser.user) {
+    console.error("Failed to create auth user", createError);
+    return { error: createError?.message || "ไม่สามารถสร้างผู้ใช้งานได้" };
+  }
+
+  const { error: profileError } = await supabase.from("user_profiles").insert({
+    id: createdUser.user.id,
+    email,
+    full_name: fullName,
+    role,
+    active: true,
+  });
+
+  if (profileError) {
+    console.error("Failed to create user profile", profileError);
+    await supabase.auth.admin.deleteUser(createdUser.user.id);
+    return { error: "สร้างบัญชีสำเร็จ แต่บันทึก role profile ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" };
+  }
+
+  revalidatePath("/settings");
+
+  return {
+    success: `สร้างผู้ใช้งาน ${email} เรียบร้อยแล้ว`,
+  };
+}
+
 export async function queueLineTestNotificationAction(
   _prevState: QueueTestNotificationState,
   formData: FormData,
 ): Promise<QueueTestNotificationState> {
+  await requirePermission("manage_settings");
+
   const message = String(formData.get("message") || "").trim();
 
   if (!message) {
