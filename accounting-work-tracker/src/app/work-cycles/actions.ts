@@ -5,6 +5,7 @@ import { getRecommendedCycleStatus } from "@/lib/phase3/selectors";
 import { getNextAllowedStatuses } from "@/lib/phase3/status-mappers";
 import { getWorkCycles, getNotificationRules, getWorkItems } from "@/lib/supabase/queries";
 import { buildLineNotificationMessage } from "@/lib/phase5/line-message";
+import { dispatchQueuedLineNotifications } from "@/lib/line/dispatcher";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { WorkItemStatus } from "@/lib/mock/phase3-data";
 import type { NotificationEventType } from "@/types/notifications";
@@ -14,6 +15,29 @@ type UpdateStatusActionState = {
   message?: string;
   error?: string;
 };
+
+async function attemptAutomaticLineDispatch(context: {
+  workItemId: string;
+  workCycleId: string;
+  eventType: NotificationEventType;
+  nextStatus: WorkItemStatus;
+}) {
+  try {
+    const result = await dispatchQueuedLineNotifications();
+
+    if (result.failed > 0 || result.configError) {
+      console.error("Automatic LINE dispatch completed with delivery issues", {
+        ...context,
+        ...result,
+      });
+    }
+  } catch (error) {
+    console.error("Automatic LINE dispatch failed", {
+      ...context,
+      error: error instanceof Error ? error.message : error,
+    });
+  }
+}
 
 export async function updateWorkItemStatusAction(
   _prevState: UpdateStatusActionState,
@@ -131,6 +155,13 @@ export async function updateWorkItemStatusAction(
     if (notificationError) {
       return { error: notificationError.message || "เพิ่มคิว LINE notification ไม่สำเร็จ" };
     }
+
+    await attemptAutomaticLineDispatch({
+      workItemId,
+      workCycleId,
+      eventType,
+      nextStatus,
+    });
   }
 
   revalidatePath("/work-cycles");

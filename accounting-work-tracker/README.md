@@ -30,9 +30,10 @@ The app now supports a real server-side dispatch path:
 1. Queue rows into `line_notifications`.
    - From **Settings → LINE OA Test Queue**.
    - Or automatically when qualifying work item status changes queue a notification.
-2. Run **Settings → LINE OA Manual Dispatch**.
-3. The server reads queued rows, claims them with `processing`, sends each one through the LINE Messaging API push endpoint, then updates the row to `sent` or `failed` with `sent_at` and `error_message`.
-4. Review **Notification Logs** and **Failed Deliveries** in Settings.
+2. When a qualifying work item status update queues a notification, the same server-side flow now attempts immediate dispatch automatically.
+3. **Settings → LINE OA Manual Dispatch** remains available for debugging, retries, and draining any leftover queued rows.
+4. The server reads queued rows, claims them with `processing`, sends each one through the LINE Messaging API push endpoint, then updates the row to `sent` or `failed` with `sent_at` and `error_message`.
+5. Review **Notification Logs** and **Failed Deliveries** in Settings.
 
 ## Database setup
 
@@ -47,4 +48,5 @@ The Phase 5 schema includes:
 ## Notes
 
 - Delivery currently targets one configured LINE group or room per environment using `LINE_TARGET_GROUP_ID`.
-- Manual dispatch is the intended first production path. It can be automated later by calling the same server-side dispatcher from a scheduled job or trusted endpoint.
+- Automatic dispatch failures are logged and should not block the originating work item status update.
+- Manual dispatch is still useful for debugging, retries, or recovering queued rows after transient issues.
