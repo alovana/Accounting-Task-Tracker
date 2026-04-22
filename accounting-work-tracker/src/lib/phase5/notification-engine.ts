@@ -23,6 +23,7 @@ export function previewNotificationDispatch() {
           eventType: rule.eventType,
           customerName: matchingLog ? getCustomerNameFromWorkItemTitle(matchingLog.targetName) : "-",
           workItemTitle: matchingWorkItem?.title ?? "-",
+          assignedTo: matchingWorkItem?.assignedTo,
           blockedReason: matchingWorkItem?.blockedReason,
           dueDate: matchingWorkItem?.dueDate,
         }),

@@ -140,6 +140,7 @@ export async function updateWorkItemStatusAction(
       eventType,
       customerName: workCycle?.customerName ?? "-",
       workItemTitle: updatedWorkItem.title,
+      assignedTo: updatedWorkItem.assignedTo,
       blockedReason: nextStatus === "blocked" ? comment : undefined,
       dueDate: updatedWorkItem.dueDate,
     });
