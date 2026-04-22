@@ -43,7 +43,7 @@ export async function getCustomers(): Promise<Customer[]> {
   const { data, error } = await supabase
     .from("customers")
     .select(
-      "id, code, name, tax_id, business_type_id, service_status, notes, active"
+      "id, code, name, tax_id, business_type_id, assigned_user_id, manager_user_id, service_status, notes, active"
     )
     .order("code", { ascending: true });
 
@@ -52,14 +52,41 @@ export async function getCustomers(): Promise<Customer[]> {
     return customers;
   }
 
+  const profileIds = Array.from(
+    new Set(
+      data
+        .flatMap((item) => [item.assigned_user_id, item.manager_user_id])
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+
+  const profileNameMap = new Map<string, string>();
+
+  if (profileIds.length > 0) {
+    const { data: profiles, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("id, full_name, email")
+      .in("id", profileIds);
+
+    if (profileError) {
+      console.error("Failed to load customer assignee profiles", profileError);
+    } else {
+      for (const profile of profiles) {
+        profileNameMap.set(profile.id, profile.full_name?.trim() || profile.email || "-");
+      }
+    }
+  }
+
   return data.map((item) => ({
     id: item.id,
     code: item.code,
     name: item.name,
     taxId: item.tax_id,
     businessTypeId: item.business_type_id,
-    assignedUserName: "-",
-    managerUserName: "-",
+    assignedUserId: item.assigned_user_id ?? undefined,
+    managerUserId: item.manager_user_id ?? undefined,
+    assignedUserName: (item.assigned_user_id && profileNameMap.get(item.assigned_user_id)) || "-",
+    managerUserName: (item.manager_user_id && profileNameMap.get(item.manager_user_id)) || "-",
     serviceStatus: item.service_status,
     notes: item.notes,
     active: item.active,

@@ -15,6 +15,8 @@ export type Customer = {
   name: string;
   taxId: string;
   businessTypeId: string;
+  assignedUserId?: string;
+  managerUserId?: string;
   assignedUserName: string;
   managerUserName: string;
   serviceStatus: ServiceStatus;

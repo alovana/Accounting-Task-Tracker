@@ -129,6 +129,10 @@ function getAssignedToName(customer: Customer, role: ChecklistTemplateItem["defa
   return role === "manager" ? customer.managerUserName : customer.assignedUserName;
 }
 
+function getAssignedUserId(customer: Customer, role: ChecklistTemplateItem["defaultAssigneeRole"]) {
+  return role === "manager" ? customer.managerUserId : customer.assignedUserId;
+}
+
 export async function generateMonthlyWorkForPeriod({
   supabase,
   generatedBy,
@@ -220,6 +224,7 @@ export async function generateMonthlyWorkForPeriod({
       const insertItemResponse = await supabase.from("work_items").insert({
         work_cycle_id: workCycleId,
         template_item_id: templateItem.id,
+        assigned_user_id: getAssignedUserId(customer, templateItem.defaultAssigneeRole),
         title: templateItem.title,
         assigned_to_name: getAssignedToName(customer, templateItem.defaultAssigneeRole),
         status: "not_started",

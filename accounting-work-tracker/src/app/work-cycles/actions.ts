@@ -7,6 +7,7 @@ import { getWorkCycles, getNotificationRules, getWorkItems } from "@/lib/supabas
 import { buildLineNotificationMessage } from "@/lib/phase5/line-message";
 import { dispatchQueuedLineNotifications } from "@/lib/line/dispatcher";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import type { AppRole } from "@/lib/constants";
 import type { WorkItemStatus } from "@/lib/mock/phase3-data";
 import type { NotificationEventType } from "@/types/notifications";
 
@@ -37,6 +38,82 @@ async function attemptAutomaticLineDispatch(context: {
       error: error instanceof Error ? error.message : error,
     });
   }
+}
+
+async function resolveWorkItemAssigneeName(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  workItemId: string,
+  fallbackAssignedTo?: string,
+) {
+  const fallback = fallbackAssignedTo?.trim();
+
+  const { data: workItem } = await supabase
+    .from("work_items")
+    .select("assigned_to_name, assigned_user_id, template_item_id, work_cycle_id")
+    .eq("id", workItemId)
+    .maybeSingle();
+
+  if (!workItem) {
+    return fallback || "-";
+  }
+
+  const directProfileId = workItem.assigned_user_id;
+
+  if (directProfileId) {
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("full_name, email")
+      .eq("id", directProfileId)
+      .maybeSingle();
+
+    const directName = profile?.full_name?.trim() || profile?.email?.trim();
+    if (directName) {
+      return directName;
+    }
+  }
+
+  if (workItem.template_item_id && workItem.work_cycle_id) {
+    const [{ data: templateItem }, { data: workCycle }] = await Promise.all([
+      supabase
+        .from("checklist_template_items")
+        .select("default_assignee_role")
+        .eq("id", workItem.template_item_id)
+        .maybeSingle(),
+      supabase
+        .from("work_cycles")
+        .select("customer_id")
+        .eq("id", workItem.work_cycle_id)
+        .maybeSingle(),
+    ]);
+
+    const role = templateItem?.default_assignee_role as AppRole | undefined;
+    const customerId = workCycle?.customer_id;
+
+    if (role && customerId) {
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("assigned_user_id, manager_user_id")
+        .eq("id", customerId)
+        .maybeSingle();
+
+      const profileId = role === "manager" ? customer?.manager_user_id : customer?.assigned_user_id;
+
+      if (profileId) {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("full_name, email")
+          .eq("id", profileId)
+          .maybeSingle();
+
+        const resolvedName = profile?.full_name?.trim() || profile?.email?.trim();
+        if (resolvedName) {
+          return resolvedName;
+        }
+      }
+    }
+  }
+
+  return workItem.assigned_to_name?.trim() || fallback || "-";
 }
 
 export async function updateWorkItemStatusAction(
@@ -136,11 +213,13 @@ export async function updateWorkItemStatusAction(
   );
 
   if (eventType && updatedWorkItem && shouldQueueLineNotification) {
+    const assigneeName = await resolveWorkItemAssigneeName(supabase, workItemId, updatedWorkItem.assignedTo);
+
     const message = buildLineNotificationMessage({
       eventType,
       customerName: workCycle?.customerName ?? "-",
       workItemTitle: updatedWorkItem.title,
-      assignedTo: updatedWorkItem.assignedTo,
+      assignedTo: assigneeName,
       blockedReason: nextStatus === "blocked" ? comment : undefined,
       dueDate: updatedWorkItem.dueDate,
     });
