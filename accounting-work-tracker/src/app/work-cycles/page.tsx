@@ -27,7 +27,7 @@ import {
 import { buildMonthlyGenerationPreview } from "@/lib/work-generation";
 
 export default async function WorkCyclesPage() {
-  await requirePermission("manage_work_cycles");
+  const currentUser = await requirePermission("manage_work_cycles");
   const [workCycles, workItems, workItemUpdates, customers, checklistTemplates, checklistTemplateItems] = await Promise.all([
     getWorkCycles(),
     getWorkItems(),
@@ -130,6 +130,7 @@ export default async function WorkCyclesPage() {
                               workItemId={item.id}
                               workCycleId={item.workCycleId}
                               currentStatus={item.status}
+                              updatedByName={currentUser.fullName}
                             />
 
                             {item.note ? (

@@ -15,12 +15,14 @@ type WorkItemStatusFormProps = {
   workItemId: string;
   workCycleId: string;
   currentStatus: WorkItemStatus;
+  updatedByName: string;
 };
 
 export function WorkItemStatusForm({
   workItemId,
   workCycleId,
   currentStatus,
+  updatedByName,
 }: WorkItemStatusFormProps) {
   const [state, formAction, isPending] = useActionState(updateWorkItemStatusAction, initialState);
   const nextStatuses = getNextAllowedStatuses(currentStatus);
@@ -34,7 +36,7 @@ export function WorkItemStatusForm({
       <input type="hidden" name="workItemId" value={workItemId} />
       <input type="hidden" name="workCycleId" value={workCycleId} />
       <input type="hidden" name="currentStatus" value={currentStatus} />
-      <input type="hidden" name="updatedBy" value="manager" />
+      <input type="hidden" name="updatedBy" value={updatedByName} />
 
       <div className="grid gap-3 md:grid-cols-[1fr_1.2fr_auto]">
         <div>

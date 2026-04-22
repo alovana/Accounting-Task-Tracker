@@ -6,6 +6,7 @@ import { getNextAllowedStatuses } from "@/lib/phase3/status-mappers";
 import { getWorkCycles, getNotificationRules, getWorkItems } from "@/lib/supabase/queries";
 import { buildLineNotificationMessage } from "@/lib/phase5/line-message";
 import { dispatchQueuedLineNotifications } from "@/lib/line/dispatcher";
+import { getCurrentSessionUser } from "@/lib/auth/session";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/lib/constants";
 import type { WorkItemStatus } from "@/lib/mock/phase3-data";
@@ -16,6 +17,28 @@ type UpdateStatusActionState = {
   message?: string;
   error?: string;
 };
+
+const ROLE_LABELS = new Set(["admin", "manager", "staff"]);
+
+function normalizePersonName(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed === "-" || ROLE_LABELS.has(trimmed.toLowerCase())) {
+    return "";
+  }
+
+  return trimmed;
+}
+
+async function resolveUpdatedByDisplayName(rawUpdatedBy?: string) {
+  const normalized = normalizePersonName(rawUpdatedBy);
+
+  if (normalized) {
+    return normalized;
+  }
+
+  const sessionUser = await getCurrentSessionUser();
+  return normalizePersonName(sessionUser?.fullName) || normalizePersonName(sessionUser?.email) || rawUpdatedBy?.trim() || "system";
+}
 
 async function attemptAutomaticLineDispatch(context: {
   workItemId: string;
@@ -45,7 +68,7 @@ async function resolveWorkItemAssigneeName(
   workItemId: string,
   fallbackAssignedTo?: string,
 ) {
-  const fallback = fallbackAssignedTo?.trim();
+  const fallback = normalizePersonName(fallbackAssignedTo);
 
   const { data: workItem } = await supabase
     .from("work_items")
@@ -66,13 +89,17 @@ async function resolveWorkItemAssigneeName(
       .eq("id", directProfileId)
       .maybeSingle();
 
-    const directName = profile?.full_name?.trim() || profile?.email?.trim();
+    const directName = normalizePersonName(profile?.full_name) || normalizePersonName(profile?.email);
     if (directName) {
       return directName;
     }
   }
 
-  if (workItem.template_item_id && workItem.work_cycle_id) {
+  const inferredRole = ROLE_LABELS.has((workItem.assigned_to_name || "").trim().toLowerCase())
+    ? ((workItem.assigned_to_name || "").trim().toLowerCase() as AppRole)
+    : undefined;
+
+  if (workItem.work_cycle_id && (workItem.template_item_id || inferredRole)) {
     const [{ data: templateItem }, { data: workCycle }] = await Promise.all([
       supabase
         .from("checklist_template_items")
@@ -86,7 +113,7 @@ async function resolveWorkItemAssigneeName(
         .maybeSingle(),
     ]);
 
-    const role = templateItem?.default_assignee_role as AppRole | undefined;
+    const role = (templateItem?.default_assignee_role as AppRole | undefined) || inferredRole;
     const customerId = workCycle?.customer_id;
 
     if (role && customerId) {
@@ -105,7 +132,7 @@ async function resolveWorkItemAssigneeName(
           .eq("id", profileId)
           .maybeSingle();
 
-        const resolvedName = profile?.full_name?.trim() || profile?.email?.trim();
+        const resolvedName = normalizePersonName(profile?.full_name) || normalizePersonName(profile?.email);
         if (resolvedName) {
           return resolvedName;
         }
@@ -113,7 +140,7 @@ async function resolveWorkItemAssigneeName(
     }
   }
 
-  return workItem.assigned_to_name?.trim() || fallback || "-";
+  return normalizePersonName(workItem.assigned_to_name) || fallback || "-";
 }
 
 export async function updateWorkItemStatusAction(
@@ -125,7 +152,7 @@ export async function updateWorkItemStatusAction(
   const currentStatus = String(formData.get("currentStatus") || "") as WorkItemStatus;
   const nextStatus = String(formData.get("nextStatus") || "") as WorkItemStatus;
   const comment = String(formData.get("comment") || "").trim();
-  const updatedBy = String(formData.get("updatedBy") || "manager").trim() || "manager";
+  const updatedBy = await resolveUpdatedByDisplayName(String(formData.get("updatedBy") || ""));
 
   if (!workItemId || !workCycleId || !currentStatus || !nextStatus) {
     return { error: "ข้อมูลไม่ครบ" };
