@@ -227,6 +227,10 @@ export async function getNotificationRules(): Promise<NotificationRule[]> {
     return notificationRules;
   }
 
+  if (!data || data.length === 0) {
+    return notificationRules;
+  }
+
   return data.map((item) => ({
     id: item.id,
     eventType: item.event_type,
