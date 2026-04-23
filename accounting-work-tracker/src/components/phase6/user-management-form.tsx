@@ -275,7 +275,7 @@ export function UserManagementForm({ users, currentUserId }: UserManagementFormP
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_220px_180px]">
+        <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium text-slate-700">
               รหัสผ่านเริ่มต้น
