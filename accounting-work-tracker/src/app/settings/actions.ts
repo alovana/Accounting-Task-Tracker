@@ -12,6 +12,16 @@ export type CreateUserActionState = {
   error?: string;
 };
 
+export type UpdateUserActionState = {
+  success?: string;
+  error?: string;
+};
+
+export type DeleteUserActionState = {
+  success?: string;
+  error?: string;
+};
+
 type QueueTestNotificationState = {
   success?: boolean;
   message?: string;
@@ -37,14 +47,27 @@ const sessionCookieOptions = {
   maxAge: 60 * 60 * 24 * 7,
 };
 
-const initialState: CreateUserActionState = {};
+const initialCreateState: CreateUserActionState = {};
+const initialUpdateState: UpdateUserActionState = {};
+const initialDeleteState: DeleteUserActionState = {};
 
 function isValidRole(role: string): role is AppRole {
   return ROLE_OPTIONS.includes(role as AppRole);
 }
 
+function parseActive(value: FormDataEntryValue | null) {
+  return String(value || "true").trim().toLowerCase() === "true";
+}
+
+function revalidateSettingsViews() {
+  revalidatePath("/settings");
+  revalidatePath("/customers");
+  revalidatePath("/dashboard");
+  revalidatePath("/work-cycles");
+}
+
 export async function createUserAction(
-  _prevState: CreateUserActionState = initialState,
+  _prevState: CreateUserActionState = initialCreateState,
   formData: FormData,
 ): Promise<CreateUserActionState> {
   await requirePermission("manage_settings");
@@ -53,6 +76,7 @@ export async function createUserAction(
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "").trim();
   const role = String(formData.get("role") || "").trim();
+  const active = parseActive(formData.get("active"));
 
   if (!fullName || !email || !password || !role) {
     return { error: "กรุณากรอกชื่อ, อีเมล, รหัสผ่าน และบทบาทให้ครบ" };
@@ -97,7 +121,7 @@ export async function createUserAction(
     email,
     full_name: fullName,
     role,
-    active: true,
+    active,
   });
 
   if (profileError) {
@@ -106,10 +130,137 @@ export async function createUserAction(
     return { error: "สร้างบัญชีสำเร็จ แต่บันทึก role profile ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" };
   }
 
-  revalidatePath("/settings");
+  revalidateSettingsViews();
 
   return {
     success: `สร้างผู้ใช้งาน ${email} เรียบร้อยแล้ว`,
+  };
+}
+
+export async function updateUserAction(
+  _prevState: UpdateUserActionState = initialUpdateState,
+  formData: FormData,
+): Promise<UpdateUserActionState> {
+  const currentUser = await requirePermission("manage_settings");
+
+  const id = String(formData.get("id") || "").trim();
+  const fullName = String(formData.get("fullName") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const role = String(formData.get("role") || "").trim();
+  const password = String(formData.get("password") || "").trim();
+  const active = parseActive(formData.get("active"));
+
+  if (!id || !fullName || !email || !role) {
+    return { error: "กรุณากรอกชื่อ, อีเมล และบทบาทให้ครบ" };
+  }
+
+  if (!isValidRole(role)) {
+    return { error: "บทบาทที่เลือกไม่ถูกต้อง" };
+  }
+
+  if (password && password.length < 8) {
+    return { error: "รหัสผ่านใหม่ควรมีอย่างน้อย 8 ตัวอักษร" };
+  }
+
+  if (currentUser.id === id && !active) {
+    return { error: "ไม่สามารถปิดใช้งานบัญชีของตัวเองได้" };
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { data: existingProfile, error: existingProfileError } = await supabase
+    .from("user_profiles")
+    .select("id, email")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingProfileError || !existingProfile) {
+    return { error: "ไม่พบผู้ใช้งานที่ต้องการแก้ไข" };
+  }
+
+  const { data: duplicateEmail } = await supabase
+    .from("user_profiles")
+    .select("id")
+    .eq("email", email)
+    .neq("id", id)
+    .maybeSingle();
+
+  if (duplicateEmail) {
+    return { error: "อีเมลนี้ถูกใช้งานแล้วโดยผู้ใช้อื่น" };
+  }
+
+  const updatePayload: {
+    email: string;
+    password?: string;
+    user_metadata: { full_name: string };
+  } = {
+    email,
+    user_metadata: {
+      full_name: fullName,
+    },
+  };
+
+  if (password) {
+    updatePayload.password = password;
+  }
+
+  const { error: authError } = await supabase.auth.admin.updateUserById(id, updatePayload);
+
+  if (authError) {
+    console.error("Failed to update auth user", authError);
+    return { error: authError.message || "ไม่สามารถอัปเดตข้อมูลผู้ใช้ในระบบยืนยันตัวตนได้" };
+  }
+
+  const { error: profileError } = await supabase
+    .from("user_profiles")
+    .update({
+      email,
+      full_name: fullName,
+      role,
+      active,
+    })
+    .eq("id", id);
+
+  if (profileError) {
+    console.error("Failed to update user profile", profileError);
+    return { error: profileError.message || "ไม่สามารถอัปเดตโปรไฟล์ผู้ใช้ได้" };
+  }
+
+  revalidateSettingsViews();
+
+  return {
+    success: `อัปเดตข้อมูลผู้ใช้ ${email} เรียบร้อยแล้ว`,
+  };
+}
+
+export async function deleteUserAction(
+  _prevState: DeleteUserActionState = initialDeleteState,
+  formData: FormData,
+): Promise<DeleteUserActionState> {
+  const currentUser = await requirePermission("manage_settings");
+
+  const id = String(formData.get("id") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+
+  if (!id) {
+    return { error: "ไม่พบรหัสผู้ใช้ที่ต้องการลบ" };
+  }
+
+  if (currentUser.id === id) {
+    return { error: "ไม่อนุญาตให้ลบบัญชีของตัวเอง" };
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase.auth.admin.deleteUser(id);
+
+  if (error) {
+    console.error("Failed to delete auth user", error);
+    return { error: error.message || "ไม่สามารถลบผู้ใช้งานได้" };
+  }
+
+  revalidateSettingsViews();
+
+  return {
+    success: `ลบผู้ใช้งาน ${email || id} เรียบร้อยแล้ว`,
   };
 }
 

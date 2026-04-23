@@ -19,6 +19,16 @@ export type UserAssignmentOption = {
   role: AppRole;
 };
 
+export type AdminUserRecord = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: AppRole;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 function shouldUseMockData() {
   return !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY;
 }
@@ -124,6 +134,34 @@ export async function getAssignableUserProfiles(): Promise<UserAssignmentOption[
     fullName: item.full_name?.trim() || item.email || "-",
     email: item.email || "",
     role: item.role,
+  }));
+}
+
+export async function getAllUserProfiles(): Promise<AdminUserRecord[]> {
+  if (shouldUseMockData()) {
+    return [];
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("id, full_name, email, role, active, created_at, updated_at")
+    .order("full_name", { ascending: true })
+    .order("email", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load all user profiles", error);
+    return [];
+  }
+
+  return (data || []).map((item) => ({
+    id: item.id,
+    fullName: item.full_name?.trim() || item.email || "-",
+    email: item.email || "",
+    role: item.role,
+    active: item.active,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
   }));
 }
 

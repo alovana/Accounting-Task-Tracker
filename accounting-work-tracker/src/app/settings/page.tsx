@@ -8,32 +8,20 @@ import { NotificationPreviewList } from "@/components/phase5/notification-previe
 import { NotificationRuleList } from "@/components/phase5/notification-rule-list";
 import { LineDispatchForm } from "@/components/phase5/line-dispatch-form";
 import { LineTestForm } from "@/components/phase5/line-test-form";
-import { DeploymentReadinessCard } from "@/components/phase6/deployment-readiness-card";
-import { ReadinessChecklist } from "@/components/phase6/readiness-checklist";
 import { UserManagementForm } from "@/components/phase6/user-management-form";
 import { PasswordChangeForm } from "@/components/settings/password-change-form";
 import { canAccess } from "@/lib/auth/permissions";
 import { requireSessionUser } from "@/lib/auth/session";
 import { getLatestNotificationIssues, previewNotificationDispatch } from "@/lib/phase5/notification-engine";
 import { getEnabledRuleCount, getNotificationStats } from "@/lib/phase5/selectors";
-import { getNotificationLogs, getNotificationRules } from "@/lib/supabase/queries";
-
-const readinessItems = [
-  "Supabase Auth และ session cookie ถูกเชื่อมต่อสำหรับใช้งานจริงแล้ว",
-  "กำหนดบทบาท admin, manager, staff ผ่านตาราง user_profiles",
-  "query layer รองรับ mock-to-Supabase fallback ครบทุก phase หลัก",
-  "มี schema แยกตาม Phase 2-6 สำหรับนำไปรันใน Supabase",
-  "dashboard, reports, notifications และ settings พร้อมสำหรับ production rollout",
-];
-
-const schemaFiles = ["phase2-schema.sql", "phase3-schema.sql", "phase5-schema.sql", "phase6-auth-schema.sql"];
+import { getAllUserProfiles, getNotificationLogs, getNotificationRules } from "@/lib/supabase/queries";
 
 export default async function SettingsPage() {
   const currentUser = await requireSessionUser();
   const isAdmin = canAccess(currentUser.role, "manage_settings");
-  const [notificationRules, notificationLogs] = isAdmin
-    ? await Promise.all([getNotificationRules(), getNotificationLogs()])
-    : [[], []];
+  const [notificationRules, notificationLogs, adminUsers] = isAdmin
+    ? await Promise.all([getNotificationRules(), getNotificationLogs(), getAllUserProfiles()])
+    : [[], [], []];
 
   const stats = getNotificationStats(notificationLogs);
   const enabledRules = getEnabledRuleCount(notificationRules);
@@ -48,10 +36,10 @@ export default async function SettingsPage() {
     <AppShell>
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
         <PageHeader
-          title={isAdmin ? "Settings & Readiness" : "My Profile & Security"}
+          title={isAdmin ? "Settings & Administration" : "My Profile & Security"}
           description={
             isAdmin
-              ? "รวม system settings, readiness, notifications และ user administration ในหน้าเดียว"
+              ? "รวม system settings, notifications และ user administration ในหน้าเดียว"
               : "จัดการข้อมูลบัญชีของคุณและเปลี่ยนรหัสผ่านด้วยตัวเอง"
           }
           badge={envConfigured ? "Deployment env ready" : "Env setup pending"}
@@ -88,17 +76,6 @@ export default async function SettingsPage() {
 
         {isAdmin ? (
           <>
-            <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
-              <SectionCard
-                title="Phase 6 Readiness Checklist"
-                description="สรุปความพร้อมด้าน role access, hardening เชิงแอป, responsive และ deployment prep"
-              >
-                <ReadinessChecklist items={readinessItems} />
-              </SectionCard>
-
-              <DeploymentReadinessCard envConfigured={envConfigured} schemaFiles={schemaFiles} />
-            </div>
-
             <section className="grid gap-4 md:grid-cols-5">
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-sm text-slate-500">rules ทั้งหมด</p>
@@ -151,7 +128,7 @@ export default async function SettingsPage() {
                 title="Admin User Management"
                 description="สำหรับ admin เท่านั้น ใช้สร้างผู้ใช้งานใหม่พร้อม email, password, display name และ role ในจุดเดียว"
               >
-                <UserManagementForm />
+                <UserManagementForm users={adminUsers} currentUserId={currentUser.id} />
               </SectionCard>
 
               <SectionCard
@@ -221,7 +198,7 @@ export default async function SettingsPage() {
             <ul className="space-y-3 text-sm text-slate-700">
               <li>- Staff ใช้หน้านี้เพื่อดูข้อมูลบัญชีและเปลี่ยนรหัสผ่านด้วยตัวเอง</li>
               <li>- Manager ใช้หน้านี้เพื่อดูแลบัญชีตัวเอง โดยงานติดตามปฏิบัติการอยู่ที่ Dashboard, Monthly Work และ Reports</li>
-              <li>- Admin จะเห็นส่วน system settings, notifications, readiness และ user management เพิ่มเติมในหน้านี้</li>
+              <li>- Admin จะเห็นส่วน system settings, notifications และ user management เพิ่มเติมในหน้านี้</li>
             </ul>
           </SectionCard>
         )}
