@@ -2,6 +2,9 @@ import { getWorkCycleStatusLabel, getWorkItemStatusLabel } from "@/lib/phase3/st
 import type { Customer } from "@/types/domain";
 import type { WorkCycle, WorkItem } from "@/lib/mock/phase3-data";
 
+const COMPLETED_STATUSES: WorkItem["status"][] = ["completed", "skipped"];
+const OPEN_STATUSES: WorkItem["status"][] = ["not_started", "in_progress", "waiting_customer", "blocked"];
+
 export function getDashboardKpis(workCycles: WorkCycle[], workItems: WorkItem[]) {
   return [
     {
@@ -45,8 +48,8 @@ export function getStaffSummaries(workItems: WorkItem[]) {
       blocked: items.filter((item) => item.status === "blocked").length,
       inProgress: items.filter((item) => item.status === "in_progress").length,
       waitingCustomer: items.filter((item) => item.status === "waiting_customer").length,
-      completed: items.filter((item) => item.status === "completed").length,
-      completionRate: items.length === 0 ? 0 : Math.round((items.filter((item) => item.status === "completed").length / items.length) * 100),
+      completed: items.filter((item) => COMPLETED_STATUSES.includes(item.status)).length,
+      completionRate: items.length === 0 ? 0 : Math.round((items.filter((item) => COMPLETED_STATUSES.includes(item.status)).length / items.length) * 100),
     }))
     .sort((a, b) => b.total - a.total || a.owner.localeCompare(b.owner));
 }
@@ -66,9 +69,43 @@ export function getAttentionItems(workItems: WorkItem[]) {
 
 export function getRecentItems(workItems: WorkItem[], limit = 5) {
   return [...workItems]
-    .filter((item) => item.status !== "completed" && item.status !== "skipped")
+    .filter((item) => !COMPLETED_STATUSES.includes(item.status))
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, limit);
+}
+
+export function getStaffWorkloadGroups(workItems: WorkItem[], cycleById?: Map<string, WorkCycle>) {
+  const grouped = new Map<string, WorkItem[]>();
+
+  workItems.forEach((item) => {
+    const owner = item.assignedTo || "Unassigned";
+    const current = grouped.get(owner) ?? [];
+    current.push(item);
+    grouped.set(owner, current);
+  });
+
+  return Array.from(grouped.entries())
+    .map(([owner, items]) => ({
+      owner,
+      total: items.length,
+      open: items.filter((item) => OPEN_STATUSES.includes(item.status)).length,
+      inProgress: items.filter((item) => item.status === "in_progress").length,
+      waitingCustomer: items.filter((item) => item.status === "waiting_customer").length,
+      blocked: items.filter((item) => item.status === "blocked").length,
+      completed: items.filter((item) => COMPLETED_STATUSES.includes(item.status)).length,
+      items: [...items]
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.title.localeCompare(b.title))
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          status: item.status,
+          dueDate: item.dueDate,
+          workCycleId: item.workCycleId,
+          customerName: cycleById?.get(item.workCycleId)?.customerName ?? "ไม่ระบุลูกค้า",
+          blocker: item.blockedReason,
+        })),
+    }))
+    .sort((a, b) => b.open - a.open || b.blocked - a.blocked || a.owner.localeCompare(b.owner));
 }
 
 export function getWorkloadStatusBreakdown(workItems: WorkItem[]) {

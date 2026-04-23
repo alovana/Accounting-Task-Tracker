@@ -7,6 +7,7 @@ import { AttentionList } from "@/components/phase4/attention-list";
 import { KpiGrid } from "@/components/phase4/kpi-grid";
 import { StaffDashboardCard } from "@/components/phase4/staff-dashboard-card";
 import { StaffPerformanceTable } from "@/components/phase4/staff-performance-table";
+import { StaffWorkloadGroups } from "@/components/phase4/staff-workload-groups";
 import { WorkCycleHealthList } from "@/components/phase4/work-cycle-health-list";
 import { WorkloadStatusList } from "@/components/phase4/workload-status-list";
 import { canAccess } from "@/lib/auth/permissions";
@@ -17,6 +18,7 @@ import {
   getRecentItems,
   getStaffDashboardSummary,
   getStaffSummaries,
+  getStaffWorkloadGroups,
   getWorkCycleHealth,
   getWorkloadStatusBreakdown,
 } from "@/lib/phase4/selectors";
@@ -58,6 +60,7 @@ export default async function DashboardPage() {
       )
     : workItems;
   const visibleWorkItemIds = new Set(visibleWorkItems.map((item) => item.id));
+  const cycleById = new Map(visibleWorkCycles.map((cycle) => [cycle.id, cycle]));
   const relevantUpdates = isStaffView
     ? workItemUpdates.filter((update) => visibleWorkItemIds.has(update.workItemId))
     : workItemUpdates;
@@ -65,6 +68,7 @@ export default async function DashboardPage() {
   const kpis = getDashboardKpis(workCycles, workItems);
   const staffRows = getStaffSummaries(workItems);
   const cycleHealth = getWorkCycleHealth(workCycles);
+  const staffWorkloadGroups = getStaffWorkloadGroups(visibleWorkItems, cycleById);
   const attentionItems = getAttentionItems(workItems);
   const recentItems = getRecentItems(workItems);
   const workloadStatus = getWorkloadStatusBreakdown(workItems);
@@ -134,6 +138,18 @@ export default async function DashboardPage() {
                 </SectionCard>
               </div>
             </section>
+
+            <SectionCard
+              title="Manager Team Queue"
+              description="รวมงานตามผู้รับผิดชอบแบบพับได้ เพื่อเริ่มจากภาพรวมแล้วค่อย drill down เฉพาะคนที่ต้องติดตาม"
+            >
+              <StaffWorkloadGroups
+                groups={staffWorkloadGroups}
+                emptyTitle="ยังไม่มีคิวงานของทีม"
+                emptyDescription="เมื่อมี work items แล้ว ระบบจะแสดงการ์ดแยกตามผู้รับผิดชอบพร้อมสถานะสำคัญ"
+                defaultOpenCount={3}
+              />
+            </SectionCard>
 
             <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
               <SectionCard

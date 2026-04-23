@@ -7,6 +7,7 @@ import { StatusUpdateList } from "@/components/phase3/status-update-list";
 import { WorkCycleStatusBadge } from "@/components/phase3/work-cycle-status-badge";
 import { WorkItemStatusBadge } from "@/components/phase3/work-item-status-badge";
 import { WorkItemStatusForm } from "@/components/phase3/work-item-status-form";
+import { StaffWorkloadGroups } from "@/components/phase4/staff-workload-groups";
 import {
   getLatestWorkItemUpdateMap,
   getWorkCycleSummary,
@@ -14,6 +15,7 @@ import {
   getBlockedWorkItems,
   getRecommendedCycleStatus,
 } from "@/lib/phase3/selectors";
+import { getStaffWorkloadGroups } from "@/lib/phase4/selectors";
 import { getNextAllowedStatuses, getWorkItemStatusLabel } from "@/lib/phase3/status-mappers";
 import { requirePermission } from "@/lib/auth/session";
 import {
@@ -66,15 +68,7 @@ export default async function WorkCyclesPage() {
   const summary = getWorkCycleSummary(visibleWorkCycles, visibleWorkItems);
   const blockedItems = getBlockedWorkItems(visibleWorkItems);
   const latestUpdateMap = getLatestWorkItemUpdateMap(visibleWorkItemUpdates);
-  const workItemsByStaff = Array.from(
-    visibleWorkItems.reduce((map, item) => {
-      const key = item.assignedTo || "Unassigned";
-      const list = map.get(key) ?? [];
-      list.push(item);
-      map.set(key, list);
-      return map;
-    }, new Map<string, typeof visibleWorkItems>()),
-  ).sort(([nameA], [nameB]) => nameA.localeCompare(nameB));
+  const staffWorkloadGroups = getStaffWorkloadGroups(visibleWorkItems, cycleById);
   const isManagerView = !isStaffView;
   const now = new Date();
   const generationPreview = buildMonthlyGenerationPreview({
@@ -108,38 +102,12 @@ export default async function WorkCyclesPage() {
           title="Manager Work Monitoring"
           description="จัดกลุ่มงานตามผู้รับผิดชอบ เพื่อให้ manager ติดตาม execution และ blocker ของทีมได้เร็วขึ้น"
         >
-          <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-            {workItemsByStaff.map(([staffName, staffItems]) => {
-              const blockedCount = staffItems.filter((item) => item.status === "blocked").length;
-              const completedCount = staffItems.filter((item) => item.status === "completed" || item.status === "skipped").length;
-
-              return (
-                <div key={staffName} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-slate-900">{staffName}</p>
-                      <p className="mt-1 text-sm text-slate-500">งานทั้งหมด {staffItems.length} รายการ</p>
-                    </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-500">เสร็จ {completedCount}</span>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full bg-rose-50 px-3 py-1 text-rose-700">blocked {blockedCount}</span>
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">คงค้าง {staffItems.length - completedCount}</span>
-                  </div>
-
-                  <div className="mt-4 space-y-2">
-                    {staffItems.slice(0, 4).map((item) => (
-                      <div key={item.id} className="rounded-xl bg-white p-3 text-sm text-slate-700">
-                        <p className="font-medium text-slate-900">{item.title}</p>
-                        <p className="mt-1 text-xs text-slate-500">{cycleById.get(item.workCycleId)?.customerName ?? "ไม่ระบุลูกค้า"} · due {item.dueDate}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <StaffWorkloadGroups
+            groups={staffWorkloadGroups}
+            emptyTitle="ยังไม่มีงานให้ติดตาม"
+            emptyDescription="เมื่อมี monthly work items แล้ว จะแสดงเป็นการ์ดแยกตามผู้รับผิดชอบในส่วนนี้"
+            defaultOpenCount={2}
+          />
         </SectionCard>
       ) : null}
 
