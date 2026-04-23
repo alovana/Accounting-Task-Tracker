@@ -161,7 +161,7 @@ export async function getChecklistTemplateItems(): Promise<ChecklistTemplateItem
   const { data, error } = await supabase
     .from("checklist_template_items")
     .select(
-      "id, template_id, title, description, sort_order, is_required, due_day_offset, default_assignee_role, active"
+      "id, template_id, title, description, sort_order, is_required, due_day_offset, due_day_detail, default_assignee_role, active"
     )
     .order("sort_order", { ascending: true });
 
@@ -178,6 +178,7 @@ export async function getChecklistTemplateItems(): Promise<ChecklistTemplateItem
     sortOrder: item.sort_order,
     isRequired: item.is_required,
     dueDayOffset: item.due_day_offset,
+    dueDayDetail: item.due_day_detail ?? undefined,
     defaultAssigneeRole: item.default_assignee_role,
     active: item.active,
   }));

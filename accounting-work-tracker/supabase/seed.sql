@@ -12,16 +12,16 @@ where not exists (
   select 1 from checklist_templates ct where ct.business_type_id = bt.id
 );
 
-insert into checklist_template_items (template_id, title, description, sort_order, is_required, due_day_offset, default_assignee_role)
-select ct.id, item.title, item.description, item.sort_order, item.is_required, item.due_day_offset, item.default_assignee_role::app_role
+insert into checklist_template_items (template_id, title, description, sort_order, is_required, due_day_offset, due_day_detail, default_assignee_role)
+select ct.id, item.title, item.description, item.sort_order, item.is_required, item.due_day_offset, item.due_day_detail, item.default_assignee_role::app_role
 from checklist_templates ct
 cross join (
   values
-    ('รับเอกสารจากลูกค้า', 'ติดตามและรับเอกสารให้ครบ', 1, true, 0, 'staff'),
-    ('ตรวจสอบความครบถ้วน', 'ตรวจสอบความครบถ้วนของเอกสาร', 2, true, 2, 'staff'),
-    ('บันทึกบัญชี', 'บันทึกรายการและจัดหมวดหมู่', 3, true, 5, 'staff'),
-    ('กระทบยอดและสรุปปัญหา', 'ตรวจสอบยอดและบันทึก blocker', 4, true, 7, 'manager')
-) as item(title, description, sort_order, is_required, due_day_offset, default_assignee_role)
+    ('รับเอกสารจากลูกค้า', 'ติดตามและรับเอกสารให้ครบ', 1, true, 0, 'วันเปิดรอบงาน', 'staff'),
+    ('ตรวจสอบความครบถ้วน', 'ตรวจสอบความครบถ้วนของเอกสาร', 2, true, 2, 'ภายในวันที่ 2 หลังรับเอกสารครบ', 'staff'),
+    ('บันทึกบัญชี', 'บันทึกรายการและจัดหมวดหมู่', 3, true, 5, 'ภายในวันที่ 5 ของรอบงาน', 'staff'),
+    ('กระทบยอดและสรุปปัญหา', 'ตรวจสอบยอดและบันทึก blocker', 4, true, 7, 'หัวหน้าทบทวนสรุปภายในวันที่ 7', 'manager')
+) as item(title, description, sort_order, is_required, due_day_offset, due_day_detail, default_assignee_role)
 where not exists (
   select 1 from checklist_template_items cti where cti.template_id = ct.id and cti.title = item.title
 );

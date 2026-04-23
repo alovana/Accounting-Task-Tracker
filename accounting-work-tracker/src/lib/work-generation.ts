@@ -126,11 +126,15 @@ function getDueDate(periodYear: number, periodMonth: number, dueDayOffset: numbe
 }
 
 function getAssignedToName(customer: Customer, role: ChecklistTemplateItem["defaultAssigneeRole"]) {
-  return role === "manager" ? customer.managerUserName : customer.assignedUserName;
+  return role === "manager" || role === "admin"
+    ? customer.managerUserName
+    : customer.assignedUserName;
 }
 
 function getAssignedUserId(customer: Customer, role: ChecklistTemplateItem["defaultAssigneeRole"]) {
-  return role === "manager" ? customer.managerUserId : customer.assignedUserId;
+  return role === "manager" || role === "admin"
+    ? customer.managerUserId
+    : customer.assignedUserId;
 }
 
 export async function generateMonthlyWorkForPeriod({

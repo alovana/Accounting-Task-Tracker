@@ -139,7 +139,12 @@ export async function updateCustomerAssignmentsAction(
       }
 
       for (const item of templateItems || []) {
-        templateRoleMap.set(item.id, item.default_assignee_role === "manager" ? "manager" : "staff");
+        templateRoleMap.set(
+          item.id,
+          item.default_assignee_role === "manager" || item.default_assignee_role === "admin"
+            ? "manager"
+            : "staff",
+        );
       }
     }
 

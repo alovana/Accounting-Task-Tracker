@@ -40,6 +40,7 @@ export type ChecklistTemplateItem = {
   sortOrder: number;
   isRequired: boolean;
   dueDayOffset: number;
+  dueDayDetail?: string;
   defaultAssigneeRole: AppRole;
   active: boolean;
 };

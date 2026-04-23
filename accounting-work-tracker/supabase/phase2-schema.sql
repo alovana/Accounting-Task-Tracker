@@ -44,6 +44,7 @@ create table if not exists checklist_template_items (
   sort_order integer not null default 1,
   is_required boolean not null default true,
   due_day_offset integer not null default 0,
+  due_day_detail text default '',
   default_assignee_role app_role not null default 'staff',
   active boolean not null default true,
   created_at timestamptz not null default now(),
