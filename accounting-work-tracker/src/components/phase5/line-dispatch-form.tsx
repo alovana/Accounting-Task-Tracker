@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { dispatchLineQueueAction } from "@/app/settings/actions";
+import { dispatchLineQueueAction } from "@/app/notifications/actions";
 
 const initialState = {
   success: false,

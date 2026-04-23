@@ -1,36 +1,27 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
-import { NotificationIssueList } from "@/components/phase5/notification-issue-list";
-import { NotificationLogList } from "@/components/phase5/notification-log-list";
-import { NotificationPreviewList } from "@/components/phase5/notification-preview-list";
-import { NotificationRuleList } from "@/components/phase5/notification-rule-list";
-import { LineDispatchForm } from "@/components/phase5/line-dispatch-form";
-import { LineTestForm } from "@/components/phase5/line-test-form";
 import { UserManagementForm } from "@/components/phase6/user-management-form";
 import { PasswordChangeForm } from "@/components/settings/password-change-form";
 import { canAccess } from "@/lib/auth/permissions";
 import { requireSessionUser } from "@/lib/auth/session";
-import { getLatestNotificationIssues, previewNotificationDispatch } from "@/lib/phase5/notification-engine";
 import { getEnabledRuleCount, getNotificationStats } from "@/lib/phase5/selectors";
 import { getAllUserProfiles, getNotificationLogs, getNotificationRules } from "@/lib/supabase/queries";
 
 export default async function SettingsPage() {
   const currentUser = await requireSessionUser();
   const isAdmin = canAccess(currentUser.role, "manage_settings");
-  const [notificationRules, notificationLogs, adminUsers] = isAdmin
-    ? await Promise.all([getNotificationRules(), getNotificationLogs(), getAllUserProfiles()])
-    : [[], [], []];
+  const canManageNotifications = canAccess(currentUser.role, "manage_notifications");
+
+  const [notificationRules, notificationLogs, adminUsers] = await Promise.all([
+    canManageNotifications ? getNotificationRules() : Promise.resolve([]),
+    canManageNotifications ? getNotificationLogs() : Promise.resolve([]),
+    isAdmin ? getAllUserProfiles() : Promise.resolve([]),
+  ]);
 
   const stats = getNotificationStats(notificationLogs);
   const enabledRules = getEnabledRuleCount(notificationRules);
-  const failedLogs = getLatestNotificationIssues(notificationLogs);
-  const previews = previewNotificationDispatch();
-  const envConfigured = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-  const lineConfigured = Boolean(process.env.LINE_CHANNEL_ACCESS_TOKEN && process.env.LINE_TARGET_GROUP_ID);
 
   return (
     <AppShell>
@@ -39,10 +30,10 @@ export default async function SettingsPage() {
           title={isAdmin ? "Settings & Administration" : "My Profile & Security"}
           description={
             isAdmin
-              ? "รวม system settings, notifications และ user administration ในหน้าเดียว"
+              ? "จัดการบัญชีผู้ใช้ ระบบความปลอดภัย และดูภาพรวม notification จากจุดเดียว"
               : "จัดการข้อมูลบัญชีของคุณและเปลี่ยนรหัสผ่านด้วยตัวเอง"
           }
-          badge={envConfigured ? "Deployment env ready" : "Env setup pending"}
+          badge={canManageNotifications ? "Notifications workspace available" : "Profile settings"}
         />
 
         <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -74,134 +65,52 @@ export default async function SettingsPage() {
           </SectionCard>
         </div>
 
-        {isAdmin ? (
-          <>
-            <section className="grid gap-4 md:grid-cols-5">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm text-slate-500">rules ทั้งหมด</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{notificationRules.length}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm text-slate-500">enabled rules</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{enabledRules}</p>
-              </div>
-              {stats.map((item) => (
-                <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <p className="text-sm text-slate-500">{item.label}</p>
-                  <p className="mt-2 text-3xl font-bold text-slate-900">{item.value}</p>
-                </div>
-              ))}
-            </section>
-
-            <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-              <SectionCard
-                title="Notification Rules"
-                description="กฎการแจ้งเตือนสำหรับ completed, blocked, และ overdue alerts"
-              >
-                {notificationRules.length === 0 ? (
-                  <EmptyState
-                    title="ยังไม่มี notification rules"
-                    description="เพิ่มกฎการแจ้งเตือนเพื่อให้ระบบส่ง LINE OA ได้ในอนาคต"
-                  />
-                ) : (
-                  <NotificationRuleList rules={notificationRules} />
-                )}
-              </SectionCard>
-
-              <SectionCard
-                title="Notification Logs"
-                description="ดูสถานะการส่งแจ้งเตือนล่าสุดว่าคิวสำเร็จหรือมีปัญหาตรงไหน"
-              >
-                {notificationLogs.length === 0 ? (
-                  <EmptyState
-                    title="ยังไม่มี notification logs"
-                    description="เมื่อระบบเริ่ม trigger notifications จะมีประวัติในส่วนนี้"
-                  />
-                ) : (
-                  <NotificationLogList logs={notificationLogs} />
-                )}
-              </SectionCard>
-            </div>
-
-            <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-              <SectionCard
-                title="Admin User Management"
-                description="สำหรับ admin เท่านั้น ใช้สร้างผู้ใช้งานใหม่พร้อม email, password, display name และ role ในจุดเดียว"
-              >
-                <UserManagementForm users={adminUsers} currentUserId={currentUser.id} />
-              </SectionCard>
-
-              <SectionCard
-                title="Preview Messages"
-                description="พรีวิวข้อความแจ้งเตือนก่อนต่อยอดไปยัง LINE OA integration จริง"
-              >
-                {previews.length === 0 ? (
-                  <EmptyState
-                    title="ยังไม่มีข้อความตัวอย่าง"
-                    description="เมื่อมี rules ที่เปิดใช้งาน ระบบจะสร้าง preview ได้ในส่วนนี้"
-                  />
-                ) : (
-                  <NotificationPreviewList items={previews} />
-                )}
-              </SectionCard>
-            </div>
-
-            <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-              <SectionCard
-                title="LINE OA Test Queue"
-                description="เพิ่มข้อความทดสอบเข้า line_notifications เพื่อเช็ก flow การคิวและ log"
-              >
-                <LineTestForm />
-              </SectionCard>
-
-              <SectionCard
-                title="LINE OA Manual Dispatch"
-                description={lineConfigured ? "พร้อมยิง queued notifications ไปที่ LINE group ปลายทาง" : "ต้องตั้งค่า LINE env ก่อน จึงจะส่ง queued notifications ได้"}
-              >
-                <LineDispatchForm />
-              </SectionCard>
-            </div>
-
-            <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-              <SectionCard
-                title="Failed Deliveries"
-                description="ดูรายการแจ้งเตือนที่ล้มเหลวเพื่อใช้ debug การเชื่อม LINE OA"
-              >
-                {failedLogs.length === 0 ? (
-                  <EmptyState
-                    title="ยังไม่มี failed deliveries"
-                    description="ตอนนี้ยังไม่มีปัญหาการส่งแจ้งเตือน"
-                  />
-                ) : (
-                  <NotificationIssueList logs={failedLogs} />
-                )}
-              </SectionCard>
-
-              <SectionCard
-                title="LINE Env Checklist"
-                description="ค่าที่ต้องตั้งเพื่อให้การส่งจริงทำงานผ่าน LINE Messaging API"
-              >
-                <ul className="space-y-2 text-sm text-slate-700">
-                  <li>NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY</li>
-                  <li>LINE_CHANNEL_ACCESS_TOKEN สำหรับ Messaging API</li>
-                  <li>LINE_TARGET_GROUP_ID สำหรับ group หรือ room ปลายทาง</li>
-                  <li>LINE_SENDER_NAME และ LINE_SENDER_ICON_URL ถ้าต้องการกำหนด sender</li>
-                </ul>
-              </SectionCard>
-            </div>
-          </>
-        ) : (
+        {canManageNotifications ? (
           <SectionCard
-            title="Role-aware Access"
-            description="แยกสิทธิ์ให้พนักงานและผู้จัดการเข้าถึงเฉพาะสิ่งที่เกี่ยวกับตนเอง"
+            title="Notification Summary"
+            description="ดูภาพรวมแบบย่อ แล้วไปจัดการ workflow การแจ้งเตือนต่อในหน้ารวมโดยตรง"
           >
-            <ul className="space-y-3 text-sm text-slate-700">
-              <li>- Staff ใช้หน้านี้เพื่อดูข้อมูลบัญชีและเปลี่ยนรหัสผ่านด้วยตัวเอง</li>
-              <li>- Manager ใช้หน้านี้เพื่อดูแลบัญชีตัวเอง โดยงานติดตามปฏิบัติการอยู่ที่ Dashboard, Monthly Work และ Reports</li>
-              <li>- Admin จะเห็นส่วน system settings, notifications และ user management เพิ่มเติมในหน้านี้</li>
-            </ul>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="grid flex-1 gap-4 sm:grid-cols-4">
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">rules ทั้งหมด</p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">{notificationRules.length}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">enabled rules</p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">{enabledRules}</p>
+                </div>
+                {stats.slice(0, 2).map((item) => (
+                  <div key={item.label} className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-sm text-slate-500">{item.label}</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="lg:w-72">
+                <p className="text-sm text-slate-600">
+                  เปิดหน้าจัดการ notification เพื่อดู logs, preview, queue, failed deliveries และ LINE env checklist แบบเต็ม
+                </p>
+                <Link
+                  href="/notifications"
+                  className="mt-4 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                >
+                  Open notifications workspace
+                </Link>
+              </div>
+            </div>
           </SectionCard>
-        )}
+        ) : null}
+
+        {isAdmin ? (
+          <SectionCard
+            title="Admin User Management"
+            description="สำหรับ admin เท่านั้น ใช้สร้างผู้ใช้งานใหม่พร้อม email, password, display name และ role ในจุดเดียว"
+          >
+            <UserManagementForm users={adminUsers} currentUserId={currentUser.id} />
+          </SectionCard>
+        ) : null}
       </main>
     </AppShell>
   );

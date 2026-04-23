@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { queueLineTestNotificationAction } from "@/app/settings/actions";
+import { queueLineTestNotificationAction } from "@/app/notifications/actions";
 
 const initialState = {
   success: false,

@@ -61,6 +61,7 @@ function parseActive(value: FormDataEntryValue | null) {
 
 function revalidateSettingsViews() {
   revalidatePath("/settings");
+  revalidatePath("/notifications");
   revalidatePath("/customers");
   revalidatePath("/dashboard");
   revalidatePath("/work-cycles");
@@ -268,7 +269,7 @@ export async function queueLineTestNotificationAction(
   _prevState: QueueTestNotificationState,
   formData: FormData,
 ): Promise<QueueTestNotificationState> {
-  await requirePermission("manage_settings");
+  await requirePermission("manage_notifications");
 
   const message = String(formData.get("message") || "").trim();
 
@@ -289,6 +290,7 @@ export async function queueLineTestNotificationAction(
   }
 
   revalidatePath("/settings");
+  revalidatePath("/notifications");
 
   return {
     success: true,
@@ -358,12 +360,13 @@ export async function changePasswordAction(
 export async function dispatchLineQueueAction(
   _prevState: DispatchLineQueueState,
 ): Promise<DispatchLineQueueState> {
-  await requirePermission("manage_settings");
+  await requirePermission("manage_notifications");
 
   try {
     const result = await dispatchQueuedLineNotifications();
 
     revalidatePath("/settings");
+    revalidatePath("/notifications");
 
     if (result.attempted === 0) {
       return {

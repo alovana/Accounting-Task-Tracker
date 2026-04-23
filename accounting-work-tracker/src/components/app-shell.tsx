@@ -15,6 +15,7 @@ const navItems = [
   { label: "เช็กลิสต์", href: "/checklists", permission: "manage_checklists" },
   { label: "งานรายเดือน", href: "/work-cycles", permission: "manage_work_cycles" },
   { label: "รายงาน", href: "/reports", permission: "view_reports" },
+  { label: "Notifications", href: "/notifications", permission: "manage_notifications" },
   { label: "โปรไฟล์ / ตั้งค่า", href: "/settings" },
 ] as const;
 
