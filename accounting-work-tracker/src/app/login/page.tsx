@@ -1,43 +1,24 @@
 import { LoginForm } from "@/components/auth/login-form";
-import { RoleAccessBadge } from "@/components/auth/role-access-badge";
 import { getCurrentSessionUser } from "@/lib/auth/session";
 import { APP_NAME_TH } from "@/lib/constants";
-import { rolePermissions } from "@/lib/auth/permissions";
 
 export default async function LoginPage() {
   const currentUser = await getCurrentSessionUser();
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
-      <div className="grid w-full max-w-6xl gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-        <section className="flex flex-col justify-center rounded-3xl bg-slate-900 p-8 text-white shadow-xl lg:p-10">
-          <p className="text-sm font-medium text-blue-300">Production Access Control</p>
-          <h1 className="mt-4 text-3xl font-semibold leading-tight lg:text-4xl">
-            {APP_NAME_TH}
-          </h1>
-          <p className="mt-4 max-w-xl text-sm text-slate-300 lg:text-base">
-            ระบบกลางสำหรับติดตามสถานะงานบัญชีของลูกค้าแบบรายเดือน รองรับการยืนยันตัวตนผ่าน Supabase Auth และกำหนดสิทธิ์ตามบทบาทของทีมงาน
-          </p>
+      <div className="w-full max-w-md space-y-5">
+        <div className="text-center">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 lg:text-4xl">{APP_NAME_TH}</h1>
+        </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {Object.entries(rolePermissions).map(([role, permissions]) => (
-              <div key={role} className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-                <RoleAccessBadge role={role as keyof typeof rolePermissions} />
-                <p className="mt-3 text-sm text-slate-200">สิทธิ์หลัก {permissions.length} รายการ</p>
-              </div>
-            ))}
+        {currentUser ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+            เข้าสู่ระบบอยู่แล้วเป็น {currentUser.fullName} ({currentUser.role})
           </div>
-        </section>
+        ) : null}
 
-        <section className="flex items-center">
-          <div className="w-full space-y-4">
-            {currentUser ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                เข้าสู่ระบบอยู่แล้วเป็น {currentUser.fullName} ({currentUser.role})
-              </div>
-            ) : null}
-            <LoginForm />
-          </div>
-        </section>
+        <LoginForm />
       </div>
     </main>
   );

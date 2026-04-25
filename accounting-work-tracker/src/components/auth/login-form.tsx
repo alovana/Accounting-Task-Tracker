@@ -23,9 +23,6 @@ export function LoginForm() {
     <form action={formAction} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">เข้าสู่ระบบ</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          ใช้อีเมลบริษัทและรหัสผ่านของคุณเพื่อเข้าใช้งานระบบติดตามงานบัญชี
-        </p>
       </div>
 
       <div className="space-y-2">
@@ -47,12 +44,9 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <label className="text-sm font-medium text-slate-700" htmlFor="password">
-            รหัสผ่าน
-          </label>
-          <span className="text-sm text-slate-400">ติดต่อผู้ดูแลระบบหากเข้าใช้งานไม่ได้</span>
-        </div>
+        <label className="text-sm font-medium text-slate-700" htmlFor="password">
+          รหัสผ่าน
+        </label>
         <input
           id="password"
           type="password"
@@ -79,12 +73,6 @@ export function LoginForm() {
         <div className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">{state.error}</div>
       ) : null}
 
-      <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-        <p className="font-medium text-slate-800">การเข้าใช้งาน</p>
-        <p className="mt-1">
-          ระบบจะตรวจสอบสิทธิ์ผ่าน Supabase Auth และกำหนดบทบาทการใช้งานตามบัญชีที่ผู้ดูแลระบบเปิดสิทธิ์ไว้
-        </p>
-      </div>
     </form>
   );
 }
