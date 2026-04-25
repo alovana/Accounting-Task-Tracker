@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { StatusBadge } from "@/components/phase2/status-badge";
 import { CustomerAssignmentForm } from "@/components/phase2/customer-assignment-form";
+import { CustomerCreateForm } from "@/components/phase2/customer-create-form";
 import { requirePermission } from "@/lib/auth/session";
 import { getBusinessTypeName, getServiceStatusLabel } from "@/lib/mappers";
 import { getAssignableUserProfiles, getBusinessTypes, getCustomers } from "@/lib/supabase/queries";
@@ -50,6 +51,18 @@ export default async function CustomersPage() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+        <div className="space-y-6">
+          <SectionCard
+            title="เพิ่มลูกค้าใหม่"
+            description="สำหรับ manager และ admin ที่มีสิทธิ์ manage_customers สามารถสร้างลูกค้าและตั้ง owner เริ่มต้นได้จากหน้านี้"
+          >
+            <CustomerCreateForm
+              businessTypes={businessTypes}
+              staffOptions={staffOptions}
+              managerOptions={managerOptions}
+            />
+          </SectionCard>
+
         <SectionCard
           title="ประเภทธุรกิจ"
           description="รายการ business types ที่จะใช้ผูกกับลูกค้าและ checklist templates"
@@ -75,6 +88,7 @@ export default async function CustomersPage() {
             </div>
           )}
         </SectionCard>
+        </div>
 
         <SectionCard
           title="รายการลูกค้า"
@@ -107,7 +121,10 @@ export default async function CustomersPage() {
                         <span>Staff: {item.assignedUserName}</span>
                         <span className="text-slate-300">•</span>
                         <span>Manager: {item.managerUserName}</span>
+                        <span className="text-slate-300">•</span>
+                        <span>{item.active ? "active" : "inactive"}</span>
                       </div>
+                      {item.notes ? <p className="text-sm text-slate-500">{item.notes}</p> : null}
                     </div>
                     <StatusBadge
                       label={getServiceStatusLabel(item.serviceStatus)}

@@ -3,41 +3,57 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import type { ServiceStatus } from "@/types/domain";
 
-export type UpdateCustomerAssignmentsActionState = {
+export type CustomerActionState = {
   success?: string;
   error?: string;
 };
 
+export type UpdateCustomerAssignmentsActionState = CustomerActionState;
+export type CreateCustomerActionState = CustomerActionState;
+
 const ACTIVE_WORK_ITEM_STATUSES = ["not_started", "in_progress", "waiting_customer", "blocked"];
+const SERVICE_STATUS_OPTIONS: ServiceStatus[] = ["active", "onboarding", "paused"];
+const initialState: CustomerActionState = {};
+
+function shouldUseMockData() {
+  return !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
+function normalizeText(value: FormDataEntryValue | null) {
+  return String(value || "").trim();
+}
 
 function normalizeOptionalUuid(value: FormDataEntryValue | null) {
-  const normalized = String(value || "").trim();
+  const normalized = normalizeText(value);
   return normalized || null;
 }
 
-export async function updateCustomerAssignmentsAction(
-  _prevState: UpdateCustomerAssignmentsActionState,
-  formData: FormData,
-): Promise<UpdateCustomerAssignmentsActionState> {
-  await requirePermission("manage_customers");
+function normalizeBoolean(value: FormDataEntryValue | null) {
+  return value === "on" || value === "true";
+}
 
-  const customerId = String(formData.get("customerId") || "").trim();
-  const assignedUserId = normalizeOptionalUuid(formData.get("assignedUserId"));
-  const managerUserId = normalizeOptionalUuid(formData.get("managerUserId"));
+function isValidServiceStatus(status: string): status is ServiceStatus {
+  return SERVICE_STATUS_OPTIONS.includes(status as ServiceStatus);
+}
 
-  if (!customerId) {
-    return { error: "ไม่พบลูกค้าที่ต้องการอัปเดต" };
-  }
+function revalidateCustomerPaths() {
+  revalidatePath("/customers");
+  revalidatePath("/work-cycles");
+  revalidatePath("/dashboard");
+}
 
-  const supabase = getSupabaseServerClient();
+function mockModeError(message: string): CustomerActionState {
+  return { error: message };
+}
 
-  const [customerResult, staffProfilesResult, managerProfilesResult] = await Promise.all([
-    supabase
-      .from("customers")
-      .select("id, name")
-      .eq("id", customerId)
-      .maybeSingle(),
+async function validateAssignmentProfiles(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  assignedUserId: string | null,
+  managerUserId: string | null,
+): Promise<CustomerActionState | null> {
+  const [staffProfilesResult, managerProfilesResult] = await Promise.all([
     assignedUserId
       ? supabase.from("user_profiles").select("id, active").eq("id", assignedUserId).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -45,10 +61,6 @@ export async function updateCustomerAssignmentsAction(
       ? supabase.from("user_profiles").select("id, role, active").eq("id", managerUserId).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
   ]);
-
-  if (customerResult.error || !customerResult.data) {
-    return { error: customerResult.error?.message || "ไม่พบข้อมูลลูกค้า" };
-  }
 
   if (staffProfilesResult.error) {
     return { error: staffProfilesResult.error.message || "ตรวจสอบผู้รับผิดชอบไม่สำเร็จ" };
@@ -67,6 +79,109 @@ export async function updateCustomerAssignmentsAction(
     if (!managerProfilesResult.data?.active || (role !== "admin" && role !== "manager")) {
       return { error: "ผู้จัดการต้องเป็นผู้ใช้งาน role admin หรือ manager และ active เท่านั้น" };
     }
+  }
+
+  return null;
+}
+
+export async function createCustomerAction(
+  _prevState: CreateCustomerActionState = initialState,
+  formData: FormData,
+): Promise<CreateCustomerActionState> {
+  await requirePermission("manage_customers");
+
+  if (shouldUseMockData()) {
+    return mockModeError("โหมดตัวอย่างยังไม่รองรับการเพิ่มลูกค้า กรุณาเชื่อมต่อ Supabase ก่อน");
+  }
+
+  const code = normalizeText(formData.get("code"));
+  const name = normalizeText(formData.get("name"));
+  const taxId = normalizeText(formData.get("taxId"));
+  const businessTypeId = normalizeText(formData.get("businessTypeId"));
+  const serviceStatus = normalizeText(formData.get("serviceStatus"));
+  const notes = normalizeText(formData.get("notes"));
+  const active = normalizeBoolean(formData.get("active"));
+  const assignedUserId = normalizeOptionalUuid(formData.get("assignedUserId"));
+  const managerUserId = normalizeOptionalUuid(formData.get("managerUserId"));
+
+  if (!code || !name || !taxId || !businessTypeId || !serviceStatus) {
+    return { error: "กรุณากรอกข้อมูลลูกค้าให้ครบถ้วน" };
+  }
+
+  if (!isValidServiceStatus(serviceStatus)) {
+    return { error: "สถานะบริการไม่ถูกต้อง" };
+  }
+
+  const supabase = getSupabaseServerClient();
+
+  const [{ data: businessType, error: businessTypeError }, validationError] = await Promise.all([
+    supabase.from("business_types").select("id, name").eq("id", businessTypeId).maybeSingle(),
+    validateAssignmentProfiles(supabase, assignedUserId, managerUserId),
+  ]);
+
+  if (businessTypeError || !businessType) {
+    return { error: businessTypeError?.message || "ไม่พบประเภทธุรกิจที่เลือก" };
+  }
+
+  if (validationError) {
+    return validationError;
+  }
+
+  const { error } = await supabase.from("customers").insert({
+    code,
+    name,
+    tax_id: taxId,
+    business_type_id: businessTypeId,
+    assigned_user_id: assignedUserId,
+    manager_user_id: managerUserId,
+    service_status: serviceStatus,
+    notes,
+    active,
+  });
+
+  if (error) {
+    return { error: error.message || "ไม่สามารถสร้างลูกค้าได้" };
+  }
+
+  revalidateCustomerPaths();
+  return { success: `เพิ่มลูกค้า ${name} เรียบร้อยแล้ว` };
+}
+
+export async function updateCustomerAssignmentsAction(
+  _prevState: UpdateCustomerAssignmentsActionState,
+  formData: FormData,
+): Promise<UpdateCustomerAssignmentsActionState> {
+  await requirePermission("manage_customers");
+
+  if (shouldUseMockData()) {
+    return mockModeError("โหมดตัวอย่างยังไม่รองรับการอัปเดตลูกค้า กรุณาเชื่อมต่อ Supabase ก่อน");
+  }
+
+  const customerId = normalizeText(formData.get("customerId"));
+  const assignedUserId = normalizeOptionalUuid(formData.get("assignedUserId"));
+  const managerUserId = normalizeOptionalUuid(formData.get("managerUserId"));
+
+  if (!customerId) {
+    return { error: "ไม่พบลูกค้าที่ต้องการอัปเดต" };
+  }
+
+  const supabase = getSupabaseServerClient();
+
+  const [customerResult, validationError] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id, name")
+      .eq("id", customerId)
+      .maybeSingle(),
+    validateAssignmentProfiles(supabase, assignedUserId, managerUserId),
+  ]);
+
+  if (customerResult.error || !customerResult.data) {
+    return { error: customerResult.error?.message || "ไม่พบข้อมูลลูกค้า" };
+  }
+
+  if (validationError) {
+    return validationError;
   }
 
   const { error: customerUpdateError } = await supabase
@@ -171,9 +286,7 @@ export async function updateCustomerAssignmentsAction(
     }
   }
 
-  revalidatePath("/customers");
-  revalidatePath("/work-cycles");
-  revalidatePath("/dashboard");
+  revalidateCustomerPaths();
 
   return {
     success: `อัปเดต assignment ของ ${customerResult.data.name} เรียบร้อยแล้ว`,
