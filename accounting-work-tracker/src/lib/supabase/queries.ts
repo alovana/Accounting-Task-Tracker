@@ -11,6 +11,7 @@ import type {
   Customer,
 } from "@/types/domain";
 import type { NotificationLog, NotificationRule } from "@/types/notifications";
+import type { WorkItemFile } from "@/types/attachments";
 
 export type UserAssignmentOption = {
   id: string;
@@ -307,6 +308,39 @@ export async function getWorkItemUpdates(): Promise<WorkItemUpdate[]> {
     newStatus: item.new_status,
     comment: item.comment,
     updatedBy: item.updated_by ?? "system",
+    createdAt: item.created_at,
+  }));
+}
+
+export async function getWorkItemFiles(): Promise<WorkItemFile[]> {
+  if (shouldUseMockData()) {
+    return [];
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("work_item_files")
+    .select(
+      "id, work_item_id, file_name, file_size_bytes, content_type, storage_provider, storage_bucket, storage_object_key, uploaded_by_user_id, uploaded_by_name, created_at"
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load work item files", error);
+    return [];
+  }
+
+  return (data || []).map((item) => ({
+    id: item.id,
+    workItemId: item.work_item_id,
+    fileName: item.file_name,
+    fileSizeBytes: item.file_size_bytes ?? 0,
+    contentType: item.content_type ?? "application/octet-stream",
+    storageProvider: item.storage_provider,
+    storageBucket: item.storage_bucket,
+    storageObjectKey: item.storage_object_key,
+    uploadedByUserId: item.uploaded_by_user_id ?? undefined,
+    uploadedByName: item.uploaded_by_name ?? "system",
     createdAt: item.created_at,
   }));
 }

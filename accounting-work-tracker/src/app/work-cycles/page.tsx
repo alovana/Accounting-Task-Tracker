@@ -5,6 +5,7 @@ import { SectionCard } from "@/components/phase2/section-card";
 import { BlockerList } from "@/components/phase3/blocker-list";
 import { StatusUpdateList } from "@/components/phase3/status-update-list";
 import { WorkCycleStatusBadge } from "@/components/phase3/work-cycle-status-badge";
+import { WorkItemAttachments } from "@/components/phase3/work-item-attachments";
 import { WorkItemStatusBadge } from "@/components/phase3/work-item-status-badge";
 import { WorkItemStatusForm } from "@/components/phase3/work-item-status-form";
 import { StaffWorkloadGroups } from "@/components/phase4/staff-workload-groups";
@@ -18,51 +19,33 @@ import {
 import { getStaffWorkloadGroups } from "@/lib/phase4/selectors";
 import { getNextAllowedStatuses, getWorkItemStatusLabel } from "@/lib/phase3/status-mappers";
 import { requirePermission } from "@/lib/auth/session";
+import { getVisibleWorkScope } from "@/lib/work-items/visibility";
 import {
   getChecklistTemplateItems,
   getChecklistTemplates,
   getCustomers,
   getWorkCycles,
+  getWorkItemFiles,
   getWorkItems,
   getWorkItemUpdates,
 } from "@/lib/supabase/queries";
 import { buildMonthlyGenerationPreview } from "@/lib/work-generation";
 
-function isStaffScopedUser(role: string) {
-  return role === "staff";
-}
-
 export default async function WorkCyclesPage() {
   const currentUser = await requirePermission("manage_work_cycles");
-  const [workCycles, workItems, workItemUpdates, customers, checklistTemplates, checklistTemplateItems] = await Promise.all([
+  const [workCycles, workItems, workItemUpdates, workItemFiles, customers, checklistTemplates, checklistTemplateItems] = await Promise.all([
     getWorkCycles(),
     getWorkItems(),
     getWorkItemUpdates(),
+    getWorkItemFiles(),
     getCustomers(),
     getChecklistTemplates(),
     getChecklistTemplateItems(),
   ]);
-
-  const isStaffView = isStaffScopedUser(currentUser.role);
-  const visibleCustomers = isStaffView
-    ? customers.filter(
-        (customer) =>
-          customer.assignedUserId === currentUser.id ||
-          customer.managerUserId === currentUser.id ||
-          customer.assignedUserName === currentUser.fullName ||
-          customer.managerUserName === currentUser.fullName,
-      )
-    : customers;
-  const visibleCustomerIds = new Set(visibleCustomers.map((customer) => customer.id));
-  const visibleWorkCycles = workCycles.filter((cycle) => visibleCustomerIds.has(cycle.customerId));
-  const visibleWorkCycleIds = new Set(visibleWorkCycles.map((cycle) => cycle.id));
-  const visibleWorkItems = workItems.filter(
-    (item) =>
-      visibleWorkCycleIds.has(item.workCycleId) &&
-      (!isStaffView || item.assignedTo === currentUser.fullName),
-  );
-  const visibleWorkItemIds = new Set(visibleWorkItems.map((item) => item.id));
+  const { isStaffView, visibleCustomers, visibleWorkCycles, visibleWorkItems, visibleWorkItemIds } =
+    getVisibleWorkScope({ currentUser, customers, workCycles, workItems });
   const visibleWorkItemUpdates = workItemUpdates.filter((update) => visibleWorkItemIds.has(update.workItemId));
+  const visibleWorkItemFiles = workItemFiles.filter((file) => visibleWorkItemIds.has(file.workItemId));
   const cycleById = new Map(visibleWorkCycles.map((cycle) => [cycle.id, cycle]));
 
   const summary = getWorkCycleSummary(visibleWorkCycles, visibleWorkItems);
@@ -213,6 +196,12 @@ export default async function WorkCyclesPage() {
                                 blocker: {item.blockedReason}
                               </div>
                             ) : null}
+
+                            <WorkItemAttachments
+                              workItemId={item.id}
+                              files={visibleWorkItemFiles.filter((file) => file.workItemId === item.id)}
+                              canDelete={!isStaffView}
+                            />
                           </div>
                         ))
                       )}
