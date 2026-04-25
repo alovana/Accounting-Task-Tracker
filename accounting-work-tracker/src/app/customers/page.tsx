@@ -4,9 +4,8 @@ import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { StatusBadge } from "@/components/phase2/status-badge";
 import { CustomerCreateForm } from "@/components/phase2/customer-create-form";
-import { CustomerManagementForm } from "@/components/phase2/customer-management-form";
+import { CustomerListPanel } from "@/components/phase2/customer-list-panel";
 import { requirePermission } from "@/lib/auth/session";
-import { getBusinessTypeName, getServiceStatusLabel } from "@/lib/mappers";
 import { getAssignableUserProfiles, getBusinessTypes, getCustomers } from "@/lib/supabase/queries";
 
 export default async function CustomersPage() {
@@ -100,49 +99,20 @@ export default async function CustomersPage() {
               description="เมื่อเชื่อม Supabase แล้ว ข้อมูลลูกค้าจะแสดงในส่วนนี้ทันที"
             />
           ) : (
-            <div className="space-y-4">
+            <>
               {profiles.length === 0 ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   ยังไม่มี user profiles ที่พร้อม assign, แต่ยังแก้ไขข้อมูลลูกค้า ปิด active หรือลบลูกค้าที่ไม่มีประวัติงานได้
                 </div>
               ) : null}
-              {customers.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-sm text-slate-500">{item.code}</p>
-                        <h3 className="text-base font-semibold text-slate-900">{item.name}</h3>
-                        <p className="mt-1 text-xs text-slate-500">Tax ID: {item.taxId}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                        <span>{getBusinessTypeName(item.businessTypeId, businessTypes)}</span>
-                        <span className="text-slate-300">•</span>
-                        <span>Staff: {item.assignedUserName}</span>
-                        <span className="text-slate-300">•</span>
-                        <span>Manager: {item.managerUserName}</span>
-                        <span className="text-slate-300">•</span>
-                        <span>{item.active ? "active" : "inactive"}</span>
-                      </div>
-                      {item.notes ? <p className="text-sm text-slate-500">{item.notes}</p> : null}
-                    </div>
-                    <StatusBadge
-                      label={getServiceStatusLabel(item.serviceStatus)}
-                      tone={item.serviceStatus === "onboarding" ? "amber" : "green"}
-                    />
-                  </div>
-
-                  <div className="mt-4">
-                    <CustomerManagementForm
-                      customer={item}
-                      businessTypes={businessTypes}
-                      staffOptions={staffOptions}
-                      managerOptions={managerOptions}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+              <CustomerListPanel
+                customers={customers}
+                businessTypes={businessTypes}
+                staffOptions={staffOptions}
+                managerOptions={managerOptions}
+                profilesCount={profiles.length}
+              />
+            </>
           )}
         </SectionCard>
       </div>

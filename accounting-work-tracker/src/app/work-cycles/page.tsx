@@ -4,20 +4,10 @@ import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { BlockerList } from "@/components/phase3/blocker-list";
 import { StatusUpdateList } from "@/components/phase3/status-update-list";
-import { WorkCycleStatusBadge } from "@/components/phase3/work-cycle-status-badge";
-import { WorkItemAttachments } from "@/components/phase3/work-item-attachments";
-import { WorkItemStatusBadge } from "@/components/phase3/work-item-status-badge";
-import { WorkItemStatusForm } from "@/components/phase3/work-item-status-form";
+import { WorkCycleBoard } from "@/components/phase3/work-cycle-board";
 import { StaffWorkloadGroups } from "@/components/phase4/staff-workload-groups";
-import {
-  getLatestWorkItemUpdateMap,
-  getWorkCycleSummary,
-  getWorkItemsByCycle,
-  getBlockedWorkItems,
-  getRecommendedCycleStatus,
-} from "@/lib/phase3/selectors";
+import { getWorkCycleSummary, getBlockedWorkItems } from "@/lib/phase3/selectors";
 import { getStaffWorkloadGroups } from "@/lib/phase4/selectors";
-import { getNextAllowedStatuses, getWorkItemStatusLabel } from "@/lib/phase3/status-mappers";
 import { requirePermission } from "@/lib/auth/session";
 import { getVisibleWorkScope } from "@/lib/work-items/visibility";
 import {
@@ -50,7 +40,6 @@ export default async function WorkCyclesPage() {
 
   const summary = getWorkCycleSummary(visibleWorkCycles, visibleWorkItems);
   const blockedItems = getBlockedWorkItems(visibleWorkItems);
-  const latestUpdateMap = getLatestWorkItemUpdateMap(visibleWorkItemUpdates);
   const staffWorkloadGroups = getStaffWorkloadGroups(visibleWorkItems, cycleById);
   const isManagerView = !isStaffView;
   const now = new Date();
@@ -114,102 +103,14 @@ export default async function WorkCyclesPage() {
               description="ระบบจะสร้าง work cycles จาก checklist templates ในรอบถัดไป"
             />
           ) : (
-            <div className="space-y-4">
-              {visibleWorkCycles.map((cycle, index) => {
-                const relatedItems = getWorkItemsByCycle(visibleWorkItems, cycle.id);
-                const completedCount = relatedItems.filter((item) => item.status === "completed" || item.status === "skipped").length;
-                const openByDefault = isStaffView || index < 3;
-
-                return (
-                  <details key={cycle.id} open={openByDefault} className="group rounded-2xl border border-slate-200 bg-slate-50">
-                    <summary className="cursor-pointer list-none p-5">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-base font-semibold text-slate-900">{cycle.customerName}</h3>
-                            <span className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-500">{relatedItems.length} งาน</span>
-                            <span className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-500">เสร็จ {completedCount}/{relatedItems.length || 0}</span>
-                          </div>
-                          <p className="mt-1 text-sm text-slate-500">
-                            รอบงาน {cycle.periodMonth}/{cycle.periodYear} · generated {cycle.generatedAt}
-                          </p>
-                        </div>
-                        <div className="text-left md:text-right">
-                          <div className="flex items-center gap-2 md:justify-end">
-                            <WorkCycleStatusBadge status={cycle.status} />
-                            <span className="text-xs text-slate-400 group-open:hidden">กดเพื่อดูรายละเอียด</span>
-                            <span className="hidden text-xs text-slate-400 group-open:inline">ซ่อนรายละเอียด</span>
-                          </div>
-                          <p className="mt-2 text-xs text-slate-500">
-                            แนะนำจาก work items: {getRecommendedCycleStatus(relatedItems) === cycle.status ? "สอดคล้องแล้ว" : "ควรปรับสถานะรอบงาน"}
-                          </p>
-                        </div>
-                      </div>
-                    </summary>
-
-                    <div className="grid gap-3 border-t border-slate-200 px-5 pb-5 pt-4">
-                      {relatedItems.length === 0 ? (
-                        <EmptyState
-                          title="ยังไม่มีงานย่อยในรอบนี้"
-                          description={isStaffView ? "ยังไม่มีงานที่ assign ให้คุณในรอบนี้" : "เมื่อระบบสร้าง work items จาก template แล้ว รายการจะแสดงในส่วนนี้"}
-                        />
-                      ) : (
-                        relatedItems.map((item) => (
-                          <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                              <div>
-                                <p className="font-medium text-slate-900">{item.title}</p>
-                                <p className="mt-1 text-sm text-slate-500">
-                                  ผู้รับผิดชอบ: {item.assignedTo} · due {item.dueDate}
-                                </p>
-                              </div>
-                              <WorkItemStatusBadge status={item.status} />
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                              {getNextAllowedStatuses(item.status).map((status) => (
-                                <span key={status} className="rounded-full bg-slate-100 px-3 py-1">
-                                  next: {getWorkItemStatusLabel(status)}
-                                </span>
-                              ))}
-                            </div>
-
-                            <WorkItemStatusForm
-                              workItemId={item.id}
-                              workCycleId={item.workCycleId}
-                              currentStatus={item.status}
-                              updatedByName={currentUser.fullName}
-                            />
-
-                            {item.note ? (
-                              <p className="mt-3 text-sm text-slate-600">หมายเหตุ: {item.note}</p>
-                            ) : null}
-
-                            {latestUpdateMap.get(item.id) ? (
-                              <div className="mt-3 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
-                                อัปเดตล่าสุด: {latestUpdateMap.get(item.id)?.comment} ({latestUpdateMap.get(item.id)?.updatedBy})
-                              </div>
-                            ) : null}
-
-                            {item.blockedReason ? (
-                              <div className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
-                                blocker: {item.blockedReason}
-                              </div>
-                            ) : null}
-
-                            <WorkItemAttachments
-                              workItemId={item.id}
-                              files={visibleWorkItemFiles.filter((file) => file.workItemId === item.id)}
-                              canDelete={!isStaffView}
-                            />
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </details>
-                );
-              })}
-            </div>
+            <WorkCycleBoard
+              workCycles={visibleWorkCycles}
+              workItems={visibleWorkItems}
+              workItemUpdates={visibleWorkItemUpdates}
+              workItemFiles={visibleWorkItemFiles}
+              isStaffView={isStaffView}
+              currentUserName={currentUser.fullName}
+            />
           )}
         </SectionCard>
 
