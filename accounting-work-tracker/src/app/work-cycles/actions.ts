@@ -9,6 +9,7 @@ import { dispatchQueuedLineNotifications } from "@/lib/line/dispatcher";
 import { getCurrentSessionUser } from "@/lib/auth/session";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { buildWorkItemFileObjectKey, deleteWorkItemFileFromR2, uploadWorkItemFileToR2 } from "@/lib/r2";
+import { validateWorkItemFile } from "@/lib/work-item-file-validation";
 import { getVisibleWorkScope } from "@/lib/work-items/visibility";
 import type { AppRole } from "@/lib/constants";
 import type { WorkItemStatus } from "@/lib/mock/phase3-data";
@@ -357,6 +358,12 @@ export async function uploadWorkItemFileAction(
 
   if (!workItemId || !(file instanceof File) || file.size === 0) {
     return { error: "กรุณาเลือกไฟล์ที่ต้องการอัปโหลด" };
+  }
+
+  const validation = validateWorkItemFile(file);
+
+  if (!validation.valid) {
+    return { error: validation.error };
   }
 
   const access = await requireVisibleWorkItem(workItemId);

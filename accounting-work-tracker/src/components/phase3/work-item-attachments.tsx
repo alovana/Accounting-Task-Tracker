@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { deleteWorkItemFileAction, uploadWorkItemFileAction } from "@/app/work-cycles/actions";
+import { formatBytesAsMb, workItemFileValidation } from "@/lib/work-item-file-validation";
 import type { WorkItemFile } from "@/types/attachments";
 
 const initialState = {
@@ -47,6 +48,7 @@ export function WorkItemAttachments({ workItemId, files, canDelete }: WorkItemAt
         <input
           type="file"
           name="attachment"
+          accept={workItemFileValidation.allowedAcceptValues.join(",")}
           required
           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
         />
@@ -58,6 +60,10 @@ export function WorkItemAttachments({ workItemId, files, canDelete }: WorkItemAt
           {isUploadPending ? "กำลังอัปโหลด..." : "อัปโหลดไฟล์"}
         </button>
       </form>
+
+      <p className="mt-3 text-xs text-slate-500">
+        รองรับไฟล์ {workItemFileValidation.allowedLabels.join(", ")} และขนาดไม่เกิน {formatBytesAsMb(workItemFileValidation.maxUploadSizeBytes)} ต่อไฟล์
+      </p>
 
       {uploadState.error ? <p className="mt-3 text-sm text-rose-700">{uploadState.error}</p> : null}
       {uploadState.message ? <p className="mt-3 text-sm text-emerald-700">{uploadState.message}</p> : null}
