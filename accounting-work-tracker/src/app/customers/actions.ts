@@ -12,6 +12,8 @@ export type CustomerActionState = {
 
 export type UpdateCustomerAssignmentsActionState = CustomerActionState;
 export type CreateCustomerActionState = CustomerActionState;
+export type UpdateCustomerActionState = CustomerActionState;
+export type DeleteCustomerActionState = CustomerActionState;
 
 const ACTIVE_WORK_ITEM_STATUSES = ["not_started", "in_progress", "waiting_customer", "blocked"];
 const SERVICE_STATUS_OPTIONS: ServiceStatus[] = ["active", "onboarding", "paused"];
@@ -84,6 +86,106 @@ async function validateAssignmentProfiles(
   return null;
 }
 
+async function syncCustomerAssignments(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  customerId: string,
+  assignedUserId: string | null,
+  managerUserId: string | null,
+): Promise<CustomerActionState | null> {
+  const profileIds = [assignedUserId, managerUserId].filter((value): value is string => Boolean(value));
+  const profileNameMap = new Map<string, string>();
+
+  if (profileIds.length > 0) {
+    const { data: profiles, error: profileLookupError } = await supabase
+      .from("user_profiles")
+      .select("id, full_name, email")
+      .in("id", profileIds);
+
+    if (profileLookupError) {
+      return { error: profileLookupError.message || "โหลดข้อมูลชื่อผู้รับผิดชอบไม่สำเร็จ" };
+    }
+
+    for (const profile of profiles || []) {
+      profileNameMap.set(profile.id, profile.full_name?.trim() || profile.email || "-");
+    }
+  }
+
+  const { data: customerCycles, error: cycleError } = await supabase
+    .from("work_cycles")
+    .select("id")
+    .eq("customer_id", customerId);
+
+  if (cycleError) {
+    return { error: cycleError.message || "โหลดรอบงานของลูกค้าไม่สำเร็จ" };
+  }
+
+  const cycleIds = (customerCycles || []).map((item) => item.id).filter(Boolean);
+
+  if (cycleIds.length === 0) {
+    return null;
+  }
+
+  const { data: workItems, error: workItemsError } = await supabase
+    .from("work_items")
+    .select("id, template_item_id, status")
+    .in("work_cycle_id", cycleIds)
+    .in("status", ACTIVE_WORK_ITEM_STATUSES);
+
+  if (workItemsError) {
+    return { error: workItemsError.message || "โหลด work items ไม่สำเร็จ" };
+  }
+
+  const templateItemIds = Array.from(
+    new Set((workItems || []).map((item) => item.template_item_id).filter((value): value is string => Boolean(value))),
+  );
+
+  const templateRoleMap = new Map<string, "staff" | "manager">();
+
+  if (templateItemIds.length > 0) {
+    const { data: templateItems, error: templateItemsError } = await supabase
+      .from("checklist_template_items")
+      .select("id, default_assignee_role")
+      .in("id", templateItemIds);
+
+    if (templateItemsError) {
+      return { error: templateItemsError.message || "โหลดประเภทผู้รับผิดชอบของงานไม่สำเร็จ" };
+    }
+
+    for (const item of templateItems || []) {
+      templateRoleMap.set(
+        item.id,
+        item.default_assignee_role === "manager" || item.default_assignee_role === "admin"
+          ? "manager"
+          : "staff",
+      );
+    }
+  }
+
+  const workItemUpdates = (workItems || []).map((item) => {
+    const role = templateRoleMap.get(item.template_item_id) || "staff";
+    const nextProfileId = role === "manager" ? managerUserId : assignedUserId;
+    const nextName = nextProfileId ? profileNameMap.get(nextProfileId) || "-" : "-";
+
+    return supabase
+      .from("work_items")
+      .update({
+        assigned_user_id: nextProfileId,
+        assigned_to_name: nextName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", item.id);
+  });
+
+  const results = await Promise.all(workItemUpdates);
+  const failedResult = results.find((result) => result.error);
+
+  if (failedResult?.error) {
+    return { error: failedResult.error.message || "ซิงก์ผู้รับผิดชอบใน work items ไม่สำเร็จ" };
+  }
+
+  return null;
+}
+
 export async function createCustomerAction(
   _prevState: CreateCustomerActionState = initialState,
   formData: FormData,
@@ -147,10 +249,10 @@ export async function createCustomerAction(
   return { success: `เพิ่มลูกค้า ${name} เรียบร้อยแล้ว` };
 }
 
-export async function updateCustomerAssignmentsAction(
-  _prevState: UpdateCustomerAssignmentsActionState,
+export async function updateCustomerAction(
+  _prevState: UpdateCustomerActionState = initialState,
   formData: FormData,
-): Promise<UpdateCustomerAssignmentsActionState> {
+): Promise<UpdateCustomerActionState> {
   await requirePermission("manage_customers");
 
   if (shouldUseMockData()) {
@@ -158,26 +260,37 @@ export async function updateCustomerAssignmentsAction(
   }
 
   const customerId = normalizeText(formData.get("customerId"));
+  const code = normalizeText(formData.get("code"));
+  const name = normalizeText(formData.get("name"));
+  const taxId = normalizeText(formData.get("taxId"));
+  const businessTypeId = normalizeText(formData.get("businessTypeId"));
+  const serviceStatus = normalizeText(formData.get("serviceStatus"));
+  const notes = normalizeText(formData.get("notes"));
+  const active = normalizeBoolean(formData.get("active"));
   const assignedUserId = normalizeOptionalUuid(formData.get("assignedUserId"));
   const managerUserId = normalizeOptionalUuid(formData.get("managerUserId"));
 
-  if (!customerId) {
-    return { error: "ไม่พบลูกค้าที่ต้องการอัปเดต" };
+  if (!customerId || !code || !name || !taxId || !businessTypeId || !serviceStatus) {
+    return { error: "กรุณากรอกข้อมูลลูกค้าให้ครบถ้วน" };
+  }
+
+  if (!isValidServiceStatus(serviceStatus)) {
+    return { error: "สถานะบริการไม่ถูกต้อง" };
   }
 
   const supabase = getSupabaseServerClient();
-
-  const [customerResult, validationError] = await Promise.all([
-    supabase
-      .from("customers")
-      .select("id, name")
-      .eq("id", customerId)
-      .maybeSingle(),
+  const [customerResult, businessTypeResult, validationError] = await Promise.all([
+    supabase.from("customers").select("id, name").eq("id", customerId).maybeSingle(),
+    supabase.from("business_types").select("id").eq("id", businessTypeId).maybeSingle(),
     validateAssignmentProfiles(supabase, assignedUserId, managerUserId),
   ]);
 
   if (customerResult.error || !customerResult.data) {
     return { error: customerResult.error?.message || "ไม่พบข้อมูลลูกค้า" };
+  }
+
+  if (businessTypeResult.error || !businessTypeResult.data) {
+    return { error: businessTypeResult.error?.message || "ไม่พบประเภทธุรกิจที่เลือก" };
   }
 
   if (validationError) {
@@ -187,8 +300,15 @@ export async function updateCustomerAssignmentsAction(
   const { error: customerUpdateError } = await supabase
     .from("customers")
     .update({
+      code,
+      name,
+      tax_id: taxId,
+      business_type_id: businessTypeId,
       assigned_user_id: assignedUserId,
       manager_user_id: managerUserId,
+      service_status: serviceStatus,
+      notes,
+      active,
       updated_at: new Date().toISOString(),
     })
     .eq("id", customerId);
@@ -197,98 +317,65 @@ export async function updateCustomerAssignmentsAction(
     return { error: customerUpdateError.message || "อัปเดตลูกค้าไม่สำเร็จ" };
   }
 
-  const profileIds = [assignedUserId, managerUserId].filter((value): value is string => Boolean(value));
-  const profileNameMap = new Map<string, string>();
-
-  if (profileIds.length > 0) {
-    const { data: profiles, error: profileLookupError } = await supabase
-      .from("user_profiles")
-      .select("id, full_name, email")
-      .in("id", profileIds);
-
-    if (profileLookupError) {
-      return { error: profileLookupError.message || "โหลดข้อมูลชื่อผู้รับผิดชอบไม่สำเร็จ" };
-    }
-
-    for (const profile of profiles || []) {
-      profileNameMap.set(profile.id, profile.full_name?.trim() || profile.email || "-");
-    }
-  }
-
-  const { data: customerCycles, error: cycleError } = await supabase
-    .from("work_cycles")
-    .select("id")
-    .eq("customer_id", customerId);
-
-  if (cycleError) {
-    return { error: cycleError.message || "โหลดรอบงานของลูกค้าไม่สำเร็จ" };
-  }
-
-  const cycleIds = (customerCycles || []).map((item) => item.id).filter(Boolean);
-
-  if (cycleIds.length > 0) {
-    const { data: workItems, error: workItemsError } = await supabase
-      .from("work_items")
-      .select("id, template_item_id, status")
-      .in("work_cycle_id", cycleIds)
-      .in("status", ACTIVE_WORK_ITEM_STATUSES);
-
-    if (workItemsError) {
-      return { error: workItemsError.message || "โหลด work items ไม่สำเร็จ" };
-    }
-
-    const templateItemIds = Array.from(
-      new Set((workItems || []).map((item) => item.template_item_id).filter((value): value is string => Boolean(value))),
-    );
-
-    const templateRoleMap = new Map<string, "staff" | "manager">();
-
-    if (templateItemIds.length > 0) {
-      const { data: templateItems, error: templateItemsError } = await supabase
-        .from("checklist_template_items")
-        .select("id, default_assignee_role")
-        .in("id", templateItemIds);
-
-      if (templateItemsError) {
-        return { error: templateItemsError.message || "โหลดประเภทผู้รับผิดชอบของงานไม่สำเร็จ" };
-      }
-
-      for (const item of templateItems || []) {
-        templateRoleMap.set(
-          item.id,
-          item.default_assignee_role === "manager" || item.default_assignee_role === "admin"
-            ? "manager"
-            : "staff",
-        );
-      }
-    }
-
-    const workItemUpdates = (workItems || []).map((item) => {
-      const role = templateRoleMap.get(item.template_item_id) || "staff";
-      const nextProfileId = role === "manager" ? managerUserId : assignedUserId;
-      const nextName = nextProfileId ? profileNameMap.get(nextProfileId) || "-" : "-";
-
-      return supabase
-        .from("work_items")
-        .update({
-          assigned_user_id: nextProfileId,
-          assigned_to_name: nextName,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", item.id);
-    });
-
-    const results = await Promise.all(workItemUpdates);
-    const failedResult = results.find((result) => result.error);
-
-    if (failedResult?.error) {
-      return { error: failedResult.error.message || "ซิงก์ผู้รับผิดชอบใน work items ไม่สำเร็จ" };
-    }
+  const syncError = await syncCustomerAssignments(supabase, customerId, assignedUserId, managerUserId);
+  if (syncError) {
+    return syncError;
   }
 
   revalidateCustomerPaths();
+  return { success: `อัปเดตข้อมูลลูกค้า ${name} เรียบร้อยแล้ว` };
+}
 
-  return {
-    success: `อัปเดต assignment ของ ${customerResult.data.name} เรียบร้อยแล้ว`,
-  };
+export async function updateCustomerAssignmentsAction(
+  _prevState: UpdateCustomerAssignmentsActionState,
+  formData: FormData,
+): Promise<UpdateCustomerAssignmentsActionState> {
+  return updateCustomerAction(_prevState, formData);
+}
+
+export async function deleteCustomerAction(
+  _prevState: DeleteCustomerActionState = initialState,
+  formData: FormData,
+): Promise<DeleteCustomerActionState> {
+  await requirePermission("manage_customers");
+
+  if (shouldUseMockData()) {
+    return mockModeError("โหมดตัวอย่างยังไม่รองรับการลบลูกค้า กรุณาเชื่อมต่อ Supabase ก่อน");
+  }
+
+  const customerId = normalizeText(formData.get("customerId"));
+  const customerName = normalizeText(formData.get("customerName"));
+
+  if (!customerId) {
+    return { error: "ไม่พบลูกค้าที่ต้องการลบ" };
+  }
+
+  const supabase = getSupabaseServerClient();
+  const [{ data: customer, error: customerError }, { count: workCycleCount, error: workCycleError }] = await Promise.all([
+    supabase.from("customers").select("id, name").eq("id", customerId).maybeSingle(),
+    supabase.from("work_cycles").select("id", { count: "exact", head: true }).eq("customer_id", customerId),
+  ]);
+
+  if (customerError || !customer) {
+    return { error: customerError?.message || "ไม่พบข้อมูลลูกค้า" };
+  }
+
+  if (workCycleError) {
+    return { error: workCycleError.message || "ตรวจสอบข้อมูลอ้างอิงของลูกค้าไม่สำเร็จ" };
+  }
+
+  if ((workCycleCount || 0) > 0) {
+    return {
+      error: `ไม่สามารถลบ ${customer.name} ได้ เพราะมี work cycles หรือประวัติงานแล้ว กรุณาปิด active แทนหากต้องการหยุดใช้งาน`,
+    };
+  }
+
+  const { error: deleteError } = await supabase.from("customers").delete().eq("id", customerId);
+
+  if (deleteError) {
+    return { error: deleteError.message || "ลบลูกค้าไม่สำเร็จ" };
+  }
+
+  revalidateCustomerPaths();
+  return { success: `ลบลูกค้า ${customer.name || customerName} เรียบร้อยแล้ว` };
 }

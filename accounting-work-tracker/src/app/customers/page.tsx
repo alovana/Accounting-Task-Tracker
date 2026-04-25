@@ -3,8 +3,8 @@ import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { StatusBadge } from "@/components/phase2/status-badge";
-import { CustomerAssignmentForm } from "@/components/phase2/customer-assignment-form";
 import { CustomerCreateForm } from "@/components/phase2/customer-create-form";
+import { CustomerManagementForm } from "@/components/phase2/customer-management-form";
 import { requirePermission } from "@/lib/auth/session";
 import { getBusinessTypeName, getServiceStatusLabel } from "@/lib/mappers";
 import { getAssignableUserProfiles, getBusinessTypes, getCustomers } from "@/lib/supabase/queries";
@@ -92,20 +92,20 @@ export default async function CustomersPage() {
 
         <SectionCard
           title="รายการลูกค้า"
-          description="กำหนด staff owner และ manager owner ของแต่ละลูกค้าจาก user_profiles เพื่อให้การสร้างงานและ LINE notifications ใช้ชื่อจริงได้"
+          description="แก้ไขรายละเอียดลูกค้า กำหนด owner ปิดใช้งาน หรือลบอย่างปลอดภัยจากหน้าเดียว โดยข้อมูลที่เกี่ยวข้องจะถูก revalidate อัตโนมัติ"
         >
           {customers.length === 0 ? (
             <EmptyState
               title="ยังไม่มีข้อมูลลูกค้า"
               description="เมื่อเชื่อม Supabase แล้ว ข้อมูลลูกค้าจะแสดงในส่วนนี้ทันที"
             />
-          ) : profiles.length === 0 ? (
-            <EmptyState
-              title="ยังไม่มี user profiles ที่พร้อม assign"
-              description="ไปที่ Settings เพื่อสร้างผู้ใช้งานก่อน แล้วกลับมากำหนด owner ให้ลูกค้า"
-            />
           ) : (
             <div className="space-y-4">
+              {profiles.length === 0 ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  ยังไม่มี user profiles ที่พร้อม assign, แต่ยังแก้ไขข้อมูลลูกค้า ปิด active หรือลบลูกค้าที่ไม่มีประวัติงานได้
+                </div>
+              ) : null}
               {customers.map((item) => (
                 <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -133,8 +133,9 @@ export default async function CustomersPage() {
                   </div>
 
                   <div className="mt-4">
-                    <CustomerAssignmentForm
+                    <CustomerManagementForm
                       customer={item}
+                      businessTypes={businessTypes}
                       staffOptions={staffOptions}
                       managerOptions={managerOptions}
                     />
