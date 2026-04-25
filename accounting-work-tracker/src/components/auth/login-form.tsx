@@ -20,8 +20,8 @@ export function LoginForm() {
   }, [form]);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div>
+    <form action={formAction} className="space-y-5 rounded-[28px] border border-white/70 bg-white/90 p-8 shadow-[0_28px_80px_-34px_rgba(15,23,42,0.32)] backdrop-blur xl:p-10">
+      <div className="text-center">
         <h1 className="text-2xl font-semibold text-slate-900">เข้าสู่ระบบ</h1>
       </div>
 
@@ -38,7 +38,7 @@ export function LoginForm() {
             setForm((current) => ({ ...current, email: event.target.value }))
           }
           placeholder="name@company.com"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           autoComplete="email"
         />
       </div>
@@ -56,7 +56,7 @@ export function LoginForm() {
             setForm((current) => ({ ...current, password: event.target.value }))
           }
           placeholder="••••••••"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           autoComplete="current-password"
         />
       </div>
@@ -64,15 +64,14 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isDisabled || isPending}
-        className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+        className="w-full rounded-2xl bg-slate-900 px-4 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
         {isPending ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
       </button>
 
       {state.error ? (
-        <div className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">{state.error}</div>
+        <div className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{state.error}</div>
       ) : null}
-
     </form>
   );
 }
