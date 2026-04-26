@@ -14,6 +14,9 @@ export type UpdateCustomerAssignmentsActionState = CustomerActionState;
 export type CreateCustomerActionState = CustomerActionState;
 export type UpdateCustomerActionState = CustomerActionState;
 export type DeleteCustomerActionState = CustomerActionState;
+export type CreateBusinessTypeActionState = CustomerActionState;
+export type UpdateBusinessTypeActionState = CustomerActionState;
+export type DeleteBusinessTypeActionState = CustomerActionState;
 
 const ACTIVE_WORK_ITEM_STATUSES = ["not_started", "in_progress", "waiting_customer", "blocked"];
 const SERVICE_STATUS_OPTIONS: ServiceStatus[] = ["active", "onboarding", "paused"];
@@ -44,6 +47,7 @@ function revalidateCustomerPaths() {
   revalidatePath("/customers");
   revalidatePath("/work-cycles");
   revalidatePath("/dashboard");
+  revalidatePath("/checklists");
 }
 
 function mockModeError(message: string): CustomerActionState {
@@ -184,6 +188,178 @@ async function syncCustomerAssignments(
   }
 
   return null;
+}
+
+async function validateBusinessTypeInput(name: string) {
+  if (!name) {
+    return { error: "กรุณากรอกชื่อประเภทธุรกิจ" };
+  }
+
+  if (name.length > 120) {
+    return { error: "ชื่อประเภทธุรกิจยาวเกินไป" };
+  }
+
+  return null;
+}
+
+export async function createBusinessTypeAction(
+  _prevState: CreateBusinessTypeActionState = initialState,
+  formData: FormData,
+): Promise<CreateBusinessTypeActionState> {
+  await requirePermission("manage_customers");
+
+  if (shouldUseMockData()) {
+    return mockModeError("โหมดตัวอย่างยังไม่รองรับการเพิ่ม business type กรุณาเชื่อมต่อ Supabase ก่อน");
+  }
+
+  const name = normalizeText(formData.get("name"));
+  const description = normalizeText(formData.get("description"));
+  const active = normalizeBoolean(formData.get("active"));
+
+  const validationError = await validateBusinessTypeInput(name);
+  if (validationError) {
+    return validationError;
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { data: existing, error: existingError } = await supabase
+    .from("business_types")
+    .select("id")
+    .ilike("name", name)
+    .maybeSingle();
+
+  if (existingError) {
+    return { error: existingError.message || "ตรวจสอบ business type ซ้ำไม่สำเร็จ" };
+  }
+
+  if (existing) {
+    return { error: "มี business type ชื่อนี้อยู่แล้ว" };
+  }
+
+  const { error } = await supabase.from("business_types").insert({
+    name,
+    description,
+    active,
+  });
+
+  if (error) {
+    return { error: error.message || "ไม่สามารถเพิ่ม business type ได้" };
+  }
+
+  revalidateCustomerPaths();
+  return { success: `เพิ่ม business type ${name} เรียบร้อยแล้ว` };
+}
+
+export async function updateBusinessTypeAction(
+  _prevState: UpdateBusinessTypeActionState = initialState,
+  formData: FormData,
+): Promise<UpdateBusinessTypeActionState> {
+  await requirePermission("manage_customers");
+
+  if (shouldUseMockData()) {
+    return mockModeError("โหมดตัวอย่างยังไม่รองรับการแก้ไข business type กรุณาเชื่อมต่อ Supabase ก่อน");
+  }
+
+  const businessTypeId = normalizeText(formData.get("businessTypeId"));
+  const name = normalizeText(formData.get("name"));
+  const description = normalizeText(formData.get("description"));
+  const active = normalizeBoolean(formData.get("active"));
+
+  if (!businessTypeId) {
+    return { error: "ไม่พบ business type ที่ต้องการแก้ไข" };
+  }
+
+  const validationError = await validateBusinessTypeInput(name);
+  if (validationError) {
+    return validationError;
+  }
+
+  const supabase = getSupabaseServerClient();
+  const [{ data: current, error: currentError }, { data: duplicate, error: duplicateError }] = await Promise.all([
+    supabase.from("business_types").select("id, name").eq("id", businessTypeId).maybeSingle(),
+    supabase.from("business_types").select("id").ilike("name", name).neq("id", businessTypeId).maybeSingle(),
+  ]);
+
+  if (currentError || !current) {
+    return { error: currentError?.message || "ไม่พบ business type" };
+  }
+
+  if (duplicateError) {
+    return { error: duplicateError.message || "ตรวจสอบ business type ซ้ำไม่สำเร็จ" };
+  }
+
+  if (duplicate) {
+    return { error: "มี business type ชื่อนี้อยู่แล้ว" };
+  }
+
+  const { error } = await supabase
+    .from("business_types")
+    .update({
+      name,
+      description,
+      active,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", businessTypeId);
+
+  if (error) {
+    return { error: error.message || "อัปเดต business type ไม่สำเร็จ" };
+  }
+
+  revalidateCustomerPaths();
+  return { success: `อัปเดต business type ${name} เรียบร้อยแล้ว` };
+}
+
+export async function deleteBusinessTypeAction(
+  _prevState: DeleteBusinessTypeActionState = initialState,
+  formData: FormData,
+): Promise<DeleteBusinessTypeActionState> {
+  await requirePermission("manage_customers");
+
+  if (shouldUseMockData()) {
+    return mockModeError("โหมดตัวอย่างยังไม่รองรับการลบ business type กรุณาเชื่อมต่อ Supabase ก่อน");
+  }
+
+  const businessTypeId = normalizeText(formData.get("businessTypeId"));
+  const businessTypeName = normalizeText(formData.get("businessTypeName"));
+
+  if (!businessTypeId) {
+    return { error: "ไม่พบ business type ที่ต้องการลบ" };
+  }
+
+  const supabase = getSupabaseServerClient();
+  const [businessTypeResult, customerCountResult, checklistCountResult] = await Promise.all([
+    supabase.from("business_types").select("id, name").eq("id", businessTypeId).maybeSingle(),
+    supabase.from("customers").select("id", { count: "exact", head: true }).eq("business_type_id", businessTypeId),
+    supabase.from("checklist_templates").select("id", { count: "exact", head: true }).eq("business_type_id", businessTypeId),
+  ]);
+
+  if (businessTypeResult.error || !businessTypeResult.data) {
+    return { error: businessTypeResult.error?.message || "ไม่พบ business type" };
+  }
+
+  if (customerCountResult.error) {
+    return { error: customerCountResult.error.message || "ตรวจสอบการใช้งาน business type ในลูกค้าไม่สำเร็จ" };
+  }
+
+  if (checklistCountResult.error) {
+    return { error: checklistCountResult.error.message || "ตรวจสอบการใช้งาน business type ใน checklist ไม่สำเร็จ" };
+  }
+
+  if ((customerCountResult.count || 0) > 0 || (checklistCountResult.count || 0) > 0) {
+    return {
+      error: `ไม่สามารถลบ ${businessTypeResult.data.name} ได้ เพราะยังมีลูกค้าหรือ checklist template อ้างอิงอยู่ กรุณาปิด active แทน`,
+    };
+  }
+
+  const { error } = await supabase.from("business_types").delete().eq("id", businessTypeId);
+
+  if (error) {
+    return { error: error.message || "ลบ business type ไม่สำเร็จ" };
+  }
+
+  revalidateCustomerPaths();
+  return { success: `ลบ business type ${businessTypeResult.data.name || businessTypeName} เรียบร้อยแล้ว` };
 }
 
 export async function createCustomerAction(

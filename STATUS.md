@@ -1,9 +1,9 @@
 # STATUS
 
-- Current project: Agent Office
-- Current phase: finalizing post-pair live Gateway verification and ship
-- In progress: validating live Gateway mapping after successful browser device pairing
-- Last completed: approved the Agent Office browser device, confirmed live Gateway access, and fixed invalid sessions subscription behavior
-- Next steps: commit the verified auth/runtime updates and push
+- Current project: Accounting Task Tracker
+- Current phase: customer/business master data management shipped on web UI
+- In progress: business type management completed in code, pending deploy/use with connected Supabase
+- Last completed: added web-based business type CRUD with safe delete guard and active toggle on `/customers`
+- Next steps: verify in live connected mode, then continue next requested product iteration
 - Human action needed: none right now
-- Last updated: 2026-04-18 22:19 ICT
+- Last updated: 2026-04-26 14:00 ICT
