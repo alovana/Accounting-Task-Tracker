@@ -34,40 +34,55 @@ export async function AppShell({ children }: AppShellProps) {
   });
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.18),_transparent_32%),linear-gradient(180deg,_#eff6ff_0%,_#f8fafc_42%,_#e0f2fe_100%)] text-slate-900">
+    <div className="min-h-screen bg-[linear-gradient(180deg,_#f8fafc_0%,_#f8fafc_42%,_#f1f5f9_100%)] text-slate-900">
       <div className="flex min-h-screen">
-        <aside className="w-72 shrink-0 border-r border-white/60 bg-slate-950/95 text-white shadow-[18px_0_40px_-28px_rgba(15,23,42,0.85)] backdrop-blur">
-          <div className="border-b border-white/10 px-6 py-6">
-            <div className="inline-flex rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-200">Task Management</div>
-            <h1 className="mt-4 text-xl font-semibold leading-tight">{APP_NAME}</h1>
-            <p className="mt-2 text-sm text-slate-300">Track accounting workflows, deadlines, and team progress in one place.</p>
+        <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-white/92 xl:block">
+          <div className="flex h-full flex-col px-5 py-5">
+            <div className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_30px_70px_-35px_rgba(15,23,42,0.65)]">
+              <div className="inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+                Accounting Workspace
+              </div>
+              <h1 className="mt-4 text-xl font-semibold leading-tight">{APP_NAME}</h1>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                Internal SaaS สำหรับติดตามลูกค้า งานรายเดือน และ progress ของทีมแบบชัดเจนในที่เดียว
+              </p>
+            </div>
+
+            <nav className="mt-6 space-y-2">
+              {visibleNavItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="mt-auto rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Current Session</p>
+              <p className="mt-3 text-sm font-semibold text-slate-900">{user?.fullName ?? "ไม่ได้เข้าสู่ระบบ"}</p>
+              <p className="mt-1 text-sm text-slate-500">{user?.email ?? "-"}</p>
+              <div className="mt-4 flex items-center gap-2">
+                <RoleAccessBadge role={user?.role ?? "staff"} />
+              </div>
+            </div>
           </div>
-          <nav className="space-y-2 px-4 py-5">
-            {visibleNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex w-full items-center rounded-2xl border border-transparent bg-white/5 px-4 py-3 text-left text-sm font-medium text-slate-100 transition hover:border-sky-300/20 hover:bg-sky-400/10 hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
         </aside>
 
         <div className="flex flex-1 flex-col">
-          <header className="border-b border-sky-100/80 bg-white/75 backdrop-blur">
-            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+          <header className="border-b border-slate-200 bg-white/85 backdrop-blur">
+            <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-6 py-5">
               <div>
-                <p className="text-sm font-medium uppercase tracking-[0.18em] text-blue-700">Web App</p>
-                <h2 className="text-lg font-semibold text-slate-950">{APP_NAME}</h2>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Clean SaaS Workspace</p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">{APP_NAME}</h2>
               </div>
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-white to-sky-50 px-4 py-3 text-right shadow-[0_18px_35px_-28px_rgba(30,64,175,0.45)]">
+                <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-right sm:block">
                   <p className="text-sm font-semibold text-slate-800">{user?.email ?? "-"}</p>
                   <p className="text-xs text-slate-500">{user?.fullName ?? "ไม่ได้เข้าสู่ระบบ"}</p>
                 </div>
-                <RoleAccessBadge role={user?.role ?? "staff"} />
                 <LogoutButton />
               </div>
             </div>

@@ -2,6 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
+import { SummaryCard } from "@/components/phase2/summary-card";
 import { BlockerList } from "@/components/phase3/blocker-list";
 import { StatusUpdateList } from "@/components/phase3/status-update-list";
 import { WorkCycleBoard } from "@/components/phase3/work-cycle-board";
@@ -53,141 +54,144 @@ export default async function WorkCyclesPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <PageHeader
-        title="Monthly Work Tracking"
-        description="ติดตามรอบงานรายเดือน, สถานะงาน, blocker notes และประวัติการอัปเดต"
-        badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "Supabase connected mode" : "Mock workflow mode"}
-      />
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
+        <PageHeader
+          title="Monthly Work Tracking"
+          description="ติดตามรอบงานรายเดือน สถานะงาน blocker notes และประวัติการอัปเดตในมุมมองที่สะอาด อ่านง่าย และเป็นระบบมากขึ้น"
+          badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "Supabase connected mode" : "Mock workflow mode"}
+        />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {summary.map((item) => (
-          <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">{item.label}</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{item.value}</p>
-          </div>
-        ))}
-      </section>
-
-      {isManagerView ? (
-        <SectionCard
-          title="Manager Work Monitoring"
-          description="จัดกลุ่มงานตามผู้รับผิดชอบ เพื่อให้ manager ติดตาม execution และ blocker ของทีมได้เร็วขึ้น"
-        >
-          <StaffWorkloadGroups
-            groups={staffWorkloadGroups}
-            emptyTitle="ยังไม่มีงานให้ติดตาม"
-            emptyDescription="เมื่อมี monthly work items แล้ว จะแสดงเป็นการ์ดแยกตามผู้รับผิดชอบในส่วนนี้"
-            defaultOpenCount={2}
-          />
-        </SectionCard>
-      ) : null}
-
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
-        <SectionCard
-          title="Monthly Work Board"
-          description={isStaffView ? "แสดงเฉพาะลูกค้าและงานที่คุณรับผิดชอบ" : "ภาพรวมรอบงานรายลูกค้าสำหรับเดือนล่าสุด พร้อมย่อรายละเอียดเพื่อลดการเลื่อนหน้าจอ"}
-        >
-          <div className="mb-4 flex flex-wrap gap-2 text-xs text-slate-500">
-            <span className="rounded-full bg-slate-100 px-3 py-1">
-              {isStaffView ? `ลูกค้าที่รับผิดชอบ ${visibleWorkCycles.length} ราย` : `ลูกค้าทั้งหมด ${visibleWorkCycles.length} ราย`}
-            </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">งานที่เห็น {visibleWorkItems.length} รายการ</span>
-            {!isStaffView ? (
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">เปิดดูเฉพาะลูกค้าที่ต้องการได้</span>
-            ) : null}
-          </div>
-          {visibleWorkCycles.length === 0 ? (
-            <EmptyState
-              title="ยังไม่มีรอบงาน"
-              description="ระบบจะสร้าง work cycles จาก checklist templates ในรอบถัดไป"
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {summary.map((item, index) => (
+            <SummaryCard
+              key={item.label}
+              label={item.label}
+              value={item.value}
+              description={index === 0 ? "ภาพรวมระดับบนของงานที่คุณเห็นในตอนนี้" : "อัปเดตอัตโนมัติตามข้อมูลงานจริงในระบบ"}
+              tone={index === 0 ? "accent" : "default"}
             />
-          ) : (
-            <WorkCycleBoard
-              workCycles={visibleWorkCycles}
-              workItems={visibleWorkItems}
-              workItemUpdates={visibleWorkItemUpdates}
-              workItemFiles={visibleWorkItemFiles}
-              isStaffView={isStaffView}
-              currentUserName={currentUser.fullName}
-            />
-          )}
-        </SectionCard>
+          ))}
+        </section>
 
-        <div className="space-y-6">
+        {isManagerView ? (
           <SectionCard
-            title="Monthly Generation Readiness"
-            description="เช็กความพร้อมของข้อมูลต้นทางก่อนสร้างรอบงานรายเดือนจริง"
+            title="Manager Work Monitoring"
+            description="จัดกลุ่มงานตามผู้รับผิดชอบ เพื่อให้ manager ติดตาม execution และ blocker ของทีมได้เร็วขึ้น"
           >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">ลูกค้าที่พร้อมสร้างงาน</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{generationPreview.summary.matchedCustomers}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">ลูกค้าที่ข้อมูลยังไม่ครบ</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{generationPreview.summary.unmatchedCustomers}</p>
-              </div>
-            </div>
+            <StaffWorkloadGroups
+              groups={staffWorkloadGroups}
+              emptyTitle="ยังไม่มีงานให้ติดตาม"
+              emptyDescription="เมื่อมี monthly work items แล้ว จะแสดงเป็นการ์ดแยกตามผู้รับผิดชอบในส่วนนี้"
+              defaultOpenCount={2}
+            />
+          </SectionCard>
+        ) : null}
 
-            <div className="mt-4 space-y-3">
-              {generationPreview.customerPlans.length === 0 ? (
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
+          <SectionCard
+            title="Monthly Work Board"
+            description={isStaffView ? "แสดงเฉพาะลูกค้าและงานที่คุณรับผิดชอบ" : "ภาพรวมรอบงานรายลูกค้าสำหรับเดือนล่าสุด พร้อมย่อรายละเอียดเพื่อลดความแน่นของหน้าจอ"}
+          >
+            <div className="mb-5 flex flex-wrap gap-2 text-xs text-slate-500">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">
+                {isStaffView ? `ลูกค้าที่รับผิดชอบ ${visibleWorkCycles.length} ราย` : `ลูกค้าทั้งหมด ${visibleWorkCycles.length} ราย`}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">งานที่เห็น {visibleWorkItems.length} รายการ</span>
+              {!isStaffView ? (
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-700">พร้อมต่อยอดเป็น filters และ My Tasks view ใน phase ถัดไป</span>
+              ) : null}
+            </div>
+            {visibleWorkCycles.length === 0 ? (
+              <EmptyState
+                title="ยังไม่มีรอบงาน"
+                description="ระบบจะสร้าง work cycles จาก checklist templates ในรอบถัดไป"
+              />
+            ) : (
+              <WorkCycleBoard
+                workCycles={visibleWorkCycles}
+                workItems={visibleWorkItems}
+                workItemUpdates={visibleWorkItemUpdates}
+                workItemFiles={visibleWorkItemFiles}
+                isStaffView={isStaffView}
+                currentUserName={currentUser.fullName}
+              />
+            )}
+          </SectionCard>
+
+          <div className="space-y-6">
+            <SectionCard
+              title="Monthly Generation Readiness"
+              description="เช็กความพร้อมของข้อมูลต้นทางก่อนสร้างรอบงานรายเดือนจริง"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">ลูกค้าที่พร้อมสร้างงาน</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-950">{generationPreview.summary.matchedCustomers}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">ลูกค้าที่ข้อมูลยังไม่ครบ</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-950">{generationPreview.summary.unmatchedCustomers}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {generationPreview.customerPlans.length === 0 ? (
+                  <EmptyState
+                    title="ยังไม่มีข้อมูลพร้อมสร้างงาน"
+                    description="ตรวจว่าลูกค้า active และมี checklist template พร้อม items ครบแล้ว"
+                  />
+                ) : (
+                  generationPreview.customerPlans.map((plan) => (
+                    <div key={plan.customerId} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="font-medium text-slate-900">{plan.customerName}</p>
+                      <p className="mt-1 text-sm text-slate-600">template: {plan.templateName}</p>
+                      <p className="mt-2 text-xs text-slate-500">พร้อมสร้าง {plan.workItemCount} work items</p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {generationPreview.unmatchedCustomers.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {generationPreview.unmatchedCustomers.map((item) => (
+                    <div key={item.customerId} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                      <p className="font-medium">{item.customerName}</p>
+                      <p className="mt-1">{item.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard
+              title="Status Update Flow"
+              description="ประวัติการอัปเดตสถานะของ work items"
+            >
+              {visibleWorkItemUpdates.length === 0 ? (
                 <EmptyState
-                  title="ยังไม่มีข้อมูลพร้อมสร้างงาน"
-                  description="ตรวจว่าลูกค้า active และมี checklist template พร้อม items ครบแล้ว"
+                  title="ยังไม่มีประวัติการอัปเดต"
+                  description="เมื่อเริ่มมีการเปลี่ยนสถานะงาน ระบบจะแสดงประวัติในส่วนนี้"
                 />
               ) : (
-                generationPreview.customerPlans.map((plan) => (
-                  <div key={plan.customerId} className="rounded-xl border border-slate-200 bg-white p-4">
-                    <p className="font-medium text-slate-900">{plan.customerName}</p>
-                    <p className="mt-1 text-sm text-slate-600">template: {plan.templateName}</p>
-                    <p className="mt-2 text-xs text-slate-500">พร้อมสร้าง {plan.workItemCount} work items</p>
-                  </div>
-                ))
+                <StatusUpdateList updates={visibleWorkItemUpdates} />
               )}
-            </div>
+            </SectionCard>
 
-            {generationPreview.unmatchedCustomers.length > 0 ? (
-              <div className="mt-4 space-y-3">
-                {generationPreview.unmatchedCustomers.map((item) => (
-                  <div key={item.customerId} className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
-                    <p className="font-medium">{item.customerName}</p>
-                    <p className="mt-1">{item.reason}</p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </SectionCard>
-
-          <SectionCard
-            title="Status Update Flow"
-            description="ประวัติการอัปเดตสถานะของ work items"
-          >
-            {visibleWorkItemUpdates.length === 0 ? (
-              <EmptyState
-                title="ยังไม่มีประวัติการอัปเดต"
-                description="เมื่อเริ่มมีการเปลี่ยนสถานะงาน ระบบจะแสดงประวัติในส่วนนี้"
-              />
-            ) : (
-              <StatusUpdateList updates={visibleWorkItemUpdates} />
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title="Blocker Notes"
-            description="สรุปงานที่ติดปัญหาเพื่อให้หัวหน้าติดตามต่อได้ง่าย"
-          >
-            {blockedItems.length === 0 ? (
-              <EmptyState
-                title="ไม่มีงานติดปัญหา"
-                description="ตอนนี้ยังไม่มี blocker ที่ต้องติดตามเพิ่มเติม"
-              />
-            ) : (
-              <BlockerList items={blockedItems} />
-            )}
-          </SectionCard>
+            <SectionCard
+              title="Blocker Notes"
+              description="สรุปงานที่ติดปัญหาเพื่อให้หัวหน้าติดตามต่อได้ง่าย"
+            >
+              {blockedItems.length === 0 ? (
+                <EmptyState
+                  title="ไม่มีงานติดปัญหา"
+                  description="ตอนนี้ยังไม่มี blocker ที่ต้องติดตามเพิ่มเติม"
+                />
+              ) : (
+                <BlockerList items={blockedItems} />
+              )}
+            </SectionCard>
+          </div>
         </div>
-      </div>
       </main>
     </AppShell>
   );

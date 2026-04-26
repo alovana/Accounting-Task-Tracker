@@ -2,6 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
+import { SummaryCard } from "@/components/phase2/summary-card";
 import { StatusUpdateList } from "@/components/phase3/status-update-list";
 import { AttentionList } from "@/components/phase4/attention-list";
 import { KpiGrid } from "@/components/phase4/kpi-grid";
@@ -78,15 +79,15 @@ export default async function DashboardPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-6">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
         <PageHeader
           title={isManagerView ? "Dashboard Overview" : isStaffView ? "My Dashboard" : "Admin Control Center"}
           description={
             isManagerView
-              ? "ภาพรวมปฏิบัติการของทีมและบริษัทสำหรับ manager"
+              ? "ภาพรวมปฏิบัติการของทีมและบริษัทสำหรับ manager พร้อมมุมมองที่อ่านง่ายขึ้นแบบ clean SaaS"
               : isStaffView
-                ? "แสดงเฉพาะงาน ลูกค้า และอัปเดตที่เกี่ยวข้องกับคุณ"
-                : "สรุปสิ่งที่ผู้ดูแลระบบควรดูแลด้านสิทธิ์ การตั้งค่า และความพร้อมของระบบ โดยไม่ดึงไปอยู่ในงานติดตามปฏิบัติการ"
+                ? "แสดงเฉพาะงาน ลูกค้า และอัปเดตที่เกี่ยวข้องกับคุณในมุมมองที่โฟกัสขึ้น"
+                : "สรุปสิ่งที่ผู้ดูแลระบบควรดูแลด้านสิทธิ์ การตั้งค่า และความพร้อมของระบบ โดยแยกจากงานติดตามปฏิบัติการ"
           }
           badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "Supabase connected mode" : "Mock dashboard mode"}
         />
@@ -97,7 +98,7 @@ export default async function DashboardPage() {
 
             <SectionCard
               title="Staff Dashboard Snapshot"
-              description="มุมมองตัวอย่างของพนักงานสำหรับดูงานของตัวเอง งานค้าง และลูกค้าที่รับผิดชอบ"
+              description="ตัวอย่างมุมมองของพนักงานเพื่อให้หัวหน้าประเมินภาระงานที่ทีมเห็นจริงในแต่ละวัน"
             >
               <StaffDashboardCard
                 myOpenItems={staffSummary.myOpenItems}
@@ -110,7 +111,7 @@ export default async function DashboardPage() {
             <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
               <SectionCard
                 title="Team Performance"
-                description="สรุปจำนวนงานของแต่ละคนเพื่อใช้ติดตามกำลังงานและ blockers"
+                description="สรุปปริมาณงานของแต่ละคน เพื่อใช้ดู workload และติดตาม blocker ของทีม"
               >
                 {staffRows.length === 0 ? (
                   <EmptyState
@@ -125,14 +126,14 @@ export default async function DashboardPage() {
               <div className="space-y-6">
                 <SectionCard
                   title="Work Cycle Health"
-                  description="ดูจำนวนรอบงานตามสถานะเพื่อประเมินสุขภาพของทีม"
+                  description="ดูจำนวนรอบงานตามสถานะ เพื่อประเมินสุขภาพการดำเนินงานแบบเร็ว ๆ"
                 >
                   <WorkCycleHealthList items={cycleHealth} />
                 </SectionCard>
 
                 <SectionCard
                   title="Workload by Status"
-                  description="ดูปริมาณงานตามสถานะจริงเพื่อช่วยจัดลำดับการติดตาม"
+                  description="แยกงานตามสถานะจริง เพื่อช่วยจัดลำดับการติดตามในแต่ละวัน"
                 >
                   <WorkloadStatusList items={workloadStatus} />
                 </SectionCard>
@@ -141,7 +142,7 @@ export default async function DashboardPage() {
 
             <SectionCard
               title="Manager Team Queue"
-              description="รวมงานตามผู้รับผิดชอบแบบพับได้ เพื่อเริ่มจากภาพรวมแล้วค่อย drill down เฉพาะคนที่ต้องติดตาม"
+              description="รวมงานตามผู้รับผิดชอบแบบพับได้ เพื่อเริ่มจากภาพรวมแล้วค่อย drill down เป็นรายคน"
             >
               <StaffWorkloadGroups
                 groups={staffWorkloadGroups}
@@ -154,7 +155,7 @@ export default async function DashboardPage() {
             <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
               <SectionCard
                 title="งานที่ต้องติดตาม"
-                description="รวมงาน blocked และ waiting customer เพื่อให้ผู้จัดการเห็นปัญหาเร็วขึ้น"
+                description="รวมงาน blocked และ waiting customer เพื่อให้ผู้จัดการเห็นปัญหาได้เร็วขึ้น"
               >
                 {attentionItems.length === 0 ? (
                   <EmptyState
@@ -178,7 +179,7 @@ export default async function DashboardPage() {
                 ) : (
                   <div className="space-y-3">
                     {recentItems.map((item) => (
-                      <div key={item.id} className="rounded-xl bg-slate-50 p-4">
+                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <p className="font-medium text-slate-900">{item.title}</p>
                         <p className="mt-1 text-sm text-slate-600">ผู้รับผิดชอบ: {item.assignedTo}</p>
                         <p className="mt-1 text-sm text-slate-500">กำหนดส่ง: {item.dueDate}</p>
@@ -193,7 +194,7 @@ export default async function DashboardPage() {
           <>
             <SectionCard
               title="My Work Snapshot"
-              description="สรุปงานและลูกค้าที่คุณต้องรับผิดชอบในตอนนี้"
+              description="สรุปงานและลูกค้าที่คุณต้องรับผิดชอบตอนนี้ ในมุมมองที่เรียบและโฟกัสมากขึ้น"
             >
               <StaffDashboardCard
                 myOpenItems={staffSummary.myOpenItems}
@@ -230,7 +231,7 @@ export default async function DashboardPage() {
                 ) : (
                   <div className="space-y-3">
                     {myRecentItems.map((item) => (
-                      <div key={item.id} className="rounded-xl bg-slate-50 p-4">
+                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <p className="font-medium text-slate-900">{item.title}</p>
                         <p className="mt-1 text-sm text-slate-600">ลูกค้าที่เกี่ยวข้องอยู่ในรอบงานที่คุณดูแล</p>
                         <p className="mt-1 text-sm text-slate-500">กำหนดส่ง: {item.dueDate}</p>
@@ -254,7 +255,7 @@ export default async function DashboardPage() {
                 ) : (
                   <div className="space-y-3">
                     {visibleCustomers.map((customer) => (
-                      <div key={customer.id} className="rounded-xl bg-slate-50 p-4">
+                      <div key={customer.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <p className="font-medium text-slate-900">{customer.name}</p>
                         <p className="mt-1 text-sm text-slate-500">รหัสลูกค้า: {customer.code}</p>
                         <p className="mt-1 text-sm text-slate-600">สถานะบริการ: {customer.serviceStatus}</p>
@@ -282,18 +283,9 @@ export default async function DashboardPage() {
         ) : isAdminView ? (
           <>
             <section className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm text-slate-500">ผู้ใช้งานทั้งหมด</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{staffRows.length}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm text-slate-500">ลูกค้าในระบบ</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{customers.length}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm text-slate-500">เมนูหลักของ admin</p>
-                <p className="mt-2 text-lg font-semibold text-slate-900">Customers, Checklists, Settings</p>
-              </div>
+              <SummaryCard label="ผู้ใช้งานทั้งหมด" value={staffRows.length.toString()} description="ผู้ที่มีข้อมูล workload ในระบบตอนนี้" tone="accent" />
+              <SummaryCard label="ลูกค้าในระบบ" value={customers.length.toString()} description="จำนวนลูกค้าที่ถูกสร้างไว้ในระบบ" />
+              <SummaryCard label="เมนูหลักของ admin" value="Customers, Checklists, Settings" description="โฟกัสงานกำหนดค่าและควบคุมระบบเป็นหลัก" />
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -301,7 +293,7 @@ export default async function DashboardPage() {
                 title="Admin Focus"
                 description="ผู้ดูแลระบบจะถูกพาไปยังงานกำหนดค่าและการควบคุมระบบแทนการติดตามงานรายเดือนของบริษัท"
               >
-                <ul className="space-y-3 text-sm text-slate-700">
+                <ul className="space-y-3 text-sm leading-6 text-slate-700">
                   <li>- ดูแลบัญชีผู้ใช้และ role assignments ในหน้า Settings</li>
                   <li>- จัดการข้อมูลตั้งต้น เช่น ลูกค้าและ checklist templates</li>
                   <li>- ตรวจ readiness, notification configuration และ deployment prep</li>
@@ -313,9 +305,9 @@ export default async function DashboardPage() {
                 title="Operational Views Moved to Manager"
                 description="ลดความสับสนของสิทธิ์โดยซ่อนมุมมอง operational สำหรับ admin"
               >
-                <div className="space-y-3 text-sm text-slate-700">
+                <div className="space-y-3 text-sm leading-6 text-slate-700">
                   <p>หน้า Monthly Work และ Team Reports จะไม่แสดงในเมนูของ admin แล้ว</p>
-                  <p>หากต้องทำงานด้านระบบต่อ ให้ใช้หน้าโปรไฟล์ / ตั้งค่า เพื่อจัดการรหัสผ่าน, ผู้ใช้, notifications และ readiness</p>
+                  <p>หากต้องทำงานด้านระบบต่อ ให้ใช้หน้าโปรไฟล์ / ตั้งค่า เพื่อจัดการรหัสผ่าน ผู้ใช้ notifications และ readiness</p>
                 </div>
               </SectionCard>
             </section>
