@@ -1,9 +1,9 @@
 # STATUS
 
 - Current project: Accounting Task Tracker
-- Current phase: Phase 1 clean SaaS redesign foundation shipped
-- In progress: shared UI foundation and key screens redesigned, next likely phase is work-cycle UX restructure
-- Last completed: refreshed app shell, page headers, section cards, KPI/summary cards, and restyled dashboard + work-cycles into a cleaner SaaS presentation
-- Next steps: redesign work cycle UX into My Tasks + collapsible by customer + filters
+- Current phase: Phase 2 work cycle UX shipped
+- In progress: work-cycles now has My Tasks / By Customer switching, filter bar, and collapsible customer groups
+- Last completed: redesigned `work-cycles` UX to reduce page length and improve focus for staff with many assigned companies
+- Next steps: optional refinement based on real usage feedback, or continue polishing remaining pages for visual consistency
 - Human action needed: none right now
-- Last updated: 2026-04-26 14:35 ICT
+- Last updated: 2026-04-27 14:50 ICT
