@@ -242,6 +242,7 @@ export function WorkCycleBoard({
   ]);
 
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
+  const allVisibleItems = useMemo(() => customerGroups.flatMap((group) => group.filteredItems), [customerGroups]);
 
   const selectedGroup = useMemo(() => {
     if (customerGroups.length === 0) {
