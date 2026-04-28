@@ -35,7 +35,6 @@ type CustomerGroup = {
   waitingCount: number;
   overdueCount: number;
   dueSoonCount: number;
-  openByDefault: boolean;
 };
 
 const DUE_SOON_DAYS = 3;
@@ -175,7 +174,7 @@ export function WorkCycleBoard({
 
   const customerGroups = useMemo<CustomerGroup[]>(() => {
     return workCycles
-      .map((cycle, index) => {
+      .map((cycle) => {
         const allItems = workItems.filter((item) => item.workCycleId === cycle.id);
         const filteredItems = allItems.filter((item) => {
           if (customerFilter !== "all" && cycle.id !== customerFilter) {
@@ -225,7 +224,6 @@ export function WorkCycleBoard({
           waitingCount: allItems.filter((item) => item.status === "waiting_customer").length,
           overdueCount: filteredItems.filter((item) => isOverdue(item.dueDate)).length,
           dueSoonCount: filteredItems.filter((item) => isDueSoon(item.dueDate)).length,
-          openByDefault: viewMode === "my_tasks" || normalizedQuery.length > 0 || index < 2,
         } satisfies CustomerGroup;
       })
       .filter((value): value is CustomerGroup => Boolean(value));
@@ -243,19 +241,28 @@ export function WorkCycleBoard({
     workItems,
   ]);
 
-  const allVisibleItems = customerGroups.flatMap((group) =>
-    group.filteredItems.map((item) => ({ item, cycle: group.cycle })),
-  );
+  const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
 
+  const selectedGroup = useMemo(() => {
+    if (customerGroups.length === 0) {
+      return null;
+    }
+
+    if (!selectedCycleId) {
+      return customerGroups[0];
+    }
+
+    return customerGroups.find((group) => group.cycle.id === selectedCycleId) ?? customerGroups[0];
+  }, [customerGroups, selectedCycleId]);
+
+  const allVisibleItems = customerGroups.flatMap((group) => group.filteredItems);
   const myTaskSummary = useMemo(() => {
-    const targetItems = allVisibleItems.map((entry) => entry.item);
-
     return {
-      total: targetItems.length,
-      inProgress: targetItems.filter((item) => item.status === "in_progress").length,
-      waiting: targetItems.filter((item) => item.status === "waiting_customer").length,
-      blocked: targetItems.filter((item) => item.status === "blocked").length,
-      overdue: targetItems.filter((item) => isOverdue(item.dueDate)).length,
+      total: allVisibleItems.length,
+      inProgress: allVisibleItems.filter((item) => item.status === "in_progress").length,
+      waiting: allVisibleItems.filter((item) => item.status === "waiting_customer").length,
+      blocked: allVisibleItems.filter((item) => item.status === "blocked").length,
+      overdue: allVisibleItems.filter((item) => isOverdue(item.dueDate)).length,
     };
   }, [allVisibleItems]);
 
@@ -265,10 +272,7 @@ export function WorkCycleBoard({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-slate-900">Work Cycle Workspace</p>
-              <p className="mt-1 text-xs text-slate-500">
-                สลับมุมมองได้ระหว่างงานที่ต้องทำตอนนี้ กับการดูแบบ grouped ตามลูกค้า
-              </p>
+              <p className="text-sm font-semibold text-slate-900">Monthly Work Board</p>
             </div>
             <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1">
               <button
@@ -362,7 +366,7 @@ export function WorkCycleBoard({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">แสดง {customerGroups.length} กลุ่ม</span>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">ลูกค้าที่แสดง {customerGroups.length} ราย</span>
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">งานที่ตรงเงื่อนไข {allVisibleItems.length} รายการ</span>
             {viewMode === "my_tasks" ? (
               <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-blue-700">โฟกัสเฉพาะงานที่เป็นของฉัน</span>
@@ -408,105 +412,153 @@ export function WorkCycleBoard({
         </div>
       </section>
 
-      {customerGroups.length === 0 ? (
+      {customerGroups.length === 0 || !selectedGroup ? (
         <EmptyState
           title="ไม่พบงานที่ตรงเงื่อนไข"
           description="ลองล้าง filters หรือค้นหาด้วยคำอื่น เช่น ชื่อลูกค้า ชื่องาน ผู้รับผิดชอบ หรือชื่อไฟล์แนบ"
         />
       ) : (
-        <div className="space-y-4">
-          {customerGroups.map((group) => (
-            <details key={group.cycle.id} open={group.openByDefault} className="group rounded-[28px] border border-slate-200 bg-slate-50">
-              <summary className="cursor-pointer list-none p-5 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold text-slate-950">{group.cycle.customerName}</h3>
-                      <WorkCycleStatusBadge status={group.cycle.status} />
-                      <StatusBadge label={`${group.filteredItems.length}/${group.allItems.length} tasks`} tone="slate" />
-                      {viewMode === "my_tasks" && !isStaffView ? (
-                        <StatusBadge label={`ของฉัน ${group.matchingMyItems}`} tone="green" />
-                      ) : null}
+        <section className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="space-y-3 xl:sticky xl:top-6 xl:self-start">
+            {customerGroups.map((group) => {
+              const isSelected = selectedGroup.cycle.id === group.cycle.id;
+
+              return (
+                <button
+                  key={group.cycle.id}
+                  type="button"
+                  onClick={() => setSelectedCycleId(group.cycle.id)}
+                  className={[
+                    "w-full rounded-[24px] border p-4 text-left transition duration-200",
+                    isSelected
+                      ? "border-slate-900 bg-slate-900 text-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.7)]"
+                      : "border-slate-200 bg-white text-slate-900 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.28)] hover:border-slate-300 hover:bg-slate-50",
+                  ].join(" ")}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className={`text-base font-semibold ${isSelected ? "text-white" : "text-slate-950"}`}>{group.cycle.customerName}</p>
+                      <p className={`mt-1 text-xs ${isSelected ? "text-slate-300" : "text-slate-500"}`}>
+                        รอบงาน {group.cycle.periodMonth}/{group.cycle.periodYear}
+                      </p>
                     </div>
-                    <p className="mt-2 text-sm text-slate-500">
-                      รอบงาน {group.cycle.periodMonth}/{group.cycle.periodYear} · generated {group.cycle.generatedAt}
-                    </p>
+                    <WorkCycleStatusBadge status={group.cycle.status} />
                   </div>
 
-                  <div className="flex flex-wrap gap-2 lg:max-w-sm lg:justify-end">
-                    {group.blockedCount > 0 ? <StatusBadge label={`blocked ${group.blockedCount}`} tone="amber" /> : null}
-                    {group.waitingCount > 0 ? <StatusBadge label={`waiting ${group.waitingCount}`} tone="amber" /> : null}
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    <div className={`rounded-2xl border px-3 py-2 ${isSelected ? "border-white/10 bg-white/10 text-white" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+                      งาน {group.filteredItems.length}/{group.allItems.length}
+                    </div>
+                    <div className={`rounded-2xl border px-3 py-2 ${isSelected ? "border-white/10 bg-white/10 text-white" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+                      เสร็จ {group.completedCount}
+                    </div>
+                    <div className={`rounded-2xl border px-3 py-2 ${isSelected ? "border-white/10 bg-white/10 text-white" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+                      รอลูกค้า {group.waitingCount}
+                    </div>
+                    <div className={`rounded-2xl border px-3 py-2 ${isSelected ? "border-white/10 bg-white/10 text-white" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+                      ติดปัญหา {group.blockedCount}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {viewMode === "my_tasks" && !isStaffView ? <StatusBadge label={`ของฉัน ${group.matchingMyItems}`} tone="green" /> : null}
                     {group.overdueCount > 0 ? <StatusBadge label={`overdue ${group.overdueCount}`} tone="amber" /> : null}
                     {group.dueSoonCount > 0 ? <StatusBadge label={`due soon ${group.dueSoonCount}`} tone="green" /> : null}
-                    <StatusBadge label={`เสร็จ ${group.completedCount}/${group.allItems.length || 0}`} tone="green" />
                   </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-34px_rgba(15,23,42,0.22)] md:p-6">
+            <div className="border-b border-slate-100 pb-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-xl font-semibold text-slate-950">{selectedGroup.cycle.customerName}</h3>
+                    <WorkCycleStatusBadge status={selectedGroup.cycle.status} />
+                    <StatusBadge label={`${selectedGroup.filteredItems.length}/${selectedGroup.allItems.length} tasks`} tone="slate" />
+                  </div>
+                  <p className="mt-2 text-sm text-slate-500">
+                    รอบงาน {selectedGroup.cycle.periodMonth}/{selectedGroup.cycle.periodYear} · generated {selectedGroup.cycle.generatedAt}
+                  </p>
                 </div>
 
-                <p className="mt-3 text-xs text-slate-500">
-                  {getRecommendedCycleStatus(group.filteredItems) === group.cycle.status ? "สถานะรอบงานสอดคล้องกับงานย่อยแล้ว" : "มีสัญญาณว่าสถานะรอบงานอาจต้องทบทวน"}
-                </p>
-              </summary>
-
-              <div className="space-y-3 border-t border-slate-200 px-5 pb-5 pt-4 md:px-6 md:pb-6">
-                {group.filteredItems.map((item) => {
-                  const files = filesByWorkItemId.get(item.id) || [];
-                  const latestUpdate = latestUpdateMap.get(item.id);
-                  const overdue = isOverdue(item.dueDate);
-                  const dueSoon = isDueSoon(item.dueDate);
-
-                  return (
-                    <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium text-slate-900">{item.title}</p>
-                            {overdue ? <StatusBadge label="overdue" tone="amber" /> : null}
-                            {!overdue && dueSoon ? <StatusBadge label="due soon" tone="green" /> : null}
-                          </div>
-                          <p className="mt-1 text-sm text-slate-500">
-                            ผู้รับผิดชอบ: {item.assignedTo} · due {item.dueDate || "-"}
-                          </p>
-                        </div>
-                        <WorkItemStatusBadge status={item.status} />
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                        {getNextAllowedStatuses(item.status).map((status) => (
-                          <span key={status} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-                            next: {getWorkItemStatusLabel(status)}
-                          </span>
-                        ))}
-                      </div>
-
-                      <WorkItemStatusForm
-                        workItemId={item.id}
-                        workCycleId={item.workCycleId}
-                        currentStatus={item.status}
-                        updatedByName={currentUserName}
-                      />
-
-                      {item.note ? <p className="mt-3 text-sm text-slate-600">หมายเหตุ: {item.note}</p> : null}
-
-                      {latestUpdate ? (
-                        <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-                          อัปเดตล่าสุด: {latestUpdate.comment} ({latestUpdate.updatedBy})
-                        </div>
-                      ) : null}
-
-                      {item.blockedReason ? (
-                        <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-                          blocker: {item.blockedReason}
-                        </div>
-                      ) : null}
-
-                      <WorkItemAttachments workItemId={item.id} files={files} canDelete={!isStaffView} />
-                    </div>
-                  );
-                })}
+                <div className="flex flex-wrap gap-2 lg:max-w-sm lg:justify-end">
+                  {selectedGroup.blockedCount > 0 ? <StatusBadge label={`blocked ${selectedGroup.blockedCount}`} tone="amber" /> : null}
+                  {selectedGroup.waitingCount > 0 ? <StatusBadge label={`waiting ${selectedGroup.waitingCount}`} tone="amber" /> : null}
+                  {selectedGroup.overdueCount > 0 ? <StatusBadge label={`overdue ${selectedGroup.overdueCount}`} tone="amber" /> : null}
+                  {selectedGroup.dueSoonCount > 0 ? <StatusBadge label={`due soon ${selectedGroup.dueSoonCount}`} tone="green" /> : null}
+                  <StatusBadge label={`เสร็จ ${selectedGroup.completedCount}/${selectedGroup.allItems.length || 0}`} tone="green" />
+                </div>
               </div>
-            </details>
-          ))}
-        </div>
+
+              <p className="mt-3 text-xs text-slate-500">
+                {getRecommendedCycleStatus(selectedGroup.filteredItems) === selectedGroup.cycle.status
+                  ? "สถานะรอบงานสอดคล้องกับงานย่อยแล้ว"
+                  : "มีสัญญาณว่าสถานะรอบงานอาจต้องทบทวน"}
+              </p>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {selectedGroup.filteredItems.map((item) => {
+                const files = filesByWorkItemId.get(item.id) || [];
+                const latestUpdate = latestUpdateMap.get(item.id);
+                const overdue = isOverdue(item.dueDate);
+                const dueSoon = isDueSoon(item.dueDate);
+
+                return (
+                  <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-slate-900">{item.title}</p>
+                          {overdue ? <StatusBadge label="overdue" tone="amber" /> : null}
+                          {!overdue && dueSoon ? <StatusBadge label="due soon" tone="green" /> : null}
+                        </div>
+                        <p className="mt-1 text-sm text-slate-500">
+                          ผู้รับผิดชอบ: {item.assignedTo} · due {item.dueDate || "-"}
+                        </p>
+                      </div>
+                      <WorkItemStatusBadge status={item.status} />
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                      {getNextAllowedStatuses(item.status).map((status) => (
+                        <span key={status} className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                          next: {getWorkItemStatusLabel(status)}
+                        </span>
+                      ))}
+                    </div>
+
+                    <WorkItemStatusForm
+                      workItemId={item.id}
+                      workCycleId={item.workCycleId}
+                      currentStatus={item.status}
+                      updatedByName={currentUserName}
+                    />
+
+                    {item.note ? <p className="mt-3 text-sm text-slate-600">หมายเหตุ: {item.note}</p> : null}
+
+                    {latestUpdate ? (
+                      <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                        อัปเดตล่าสุด: {latestUpdate.comment} ({latestUpdate.updatedBy})
+                      </div>
+                    ) : null}
+
+                    {item.blockedReason ? (
+                      <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                        blocker: {item.blockedReason}
+                      </div>
+                    ) : null}
+
+                    <WorkItemAttachments workItemId={item.id} files={files} canDelete={!isStaffView} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
       )}
     </div>
   );
