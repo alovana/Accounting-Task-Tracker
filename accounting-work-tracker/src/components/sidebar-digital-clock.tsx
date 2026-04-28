@@ -46,8 +46,8 @@ export function SidebarDigitalClock() {
   const date = useMemo(() => formatThaiBuddhistDate(now), [now]);
 
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_30px_70px_-35px_rgba(15,23,42,0.65)]">
-      <div className="flex min-h-[156px] flex-col items-center justify-center text-center">
+    <div className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-7 text-white shadow-[0_30px_70px_-35px_rgba(15,23,42,0.65)]">
+      <div className="flex flex-col items-center justify-center text-center">
         <div className="font-mono text-[2.2rem] font-semibold leading-none tracking-[0.08em] text-white">
           {time}
         </div>
