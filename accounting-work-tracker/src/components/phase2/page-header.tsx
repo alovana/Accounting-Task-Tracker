@@ -1,11 +1,12 @@
 type PageHeaderProps = {
   title: string;
-  description: string;
+  description?: string;
   badge?: string;
   compact?: boolean;
+  hideDescription?: boolean;
 };
 
-export function PageHeader({ title, description, badge, compact = false }: PageHeaderProps) {
+export function PageHeader({ title, description, badge, compact = false, hideDescription = true }: PageHeaderProps) {
   if (compact) {
     return null;
   }
@@ -16,7 +17,7 @@ export function PageHeader({ title, description, badge, compact = false }: PageH
         <div className="max-w-3xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Workspace</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{title}</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-500">{description}</p>
+          {!hideDescription && description ? <p className="mt-3 text-sm leading-6 text-slate-500">{description}</p> : null}
         </div>
         {badge ? (
           <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
