@@ -389,6 +389,7 @@ export function WorkCycleBoard({
           <div className="space-y-3 xl:sticky xl:top-6 xl:self-start">
             {customerGroups.map((group) => {
               const isSelected = selectedGroup.cycle.id === group.cycle.id;
+              const derivedCycleStatus = getRecommendedCycleStatus(group.filteredItems);
 
               return (
                 <button
@@ -409,7 +410,7 @@ export function WorkCycleBoard({
                         รอบงาน {group.cycle.periodMonth}/{group.cycle.periodYear}
                       </p>
                     </div>
-                    <WorkCycleStatusBadge status={group.cycle.status} />
+                    <WorkCycleStatusBadge status={derivedCycleStatus} />
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
@@ -443,7 +444,7 @@ export function WorkCycleBoard({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-xl font-semibold text-slate-950">{selectedGroup.cycle.customerName}</h3>
-                    <WorkCycleStatusBadge status={selectedGroup.cycle.status} />
+                    <WorkCycleStatusBadge status={getRecommendedCycleStatus(selectedGroup.filteredItems)} />
                     <StatusBadge label={`${selectedGroup.filteredItems.length}/${selectedGroup.allItems.length} tasks`} tone="slate" />
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
