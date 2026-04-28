@@ -90,6 +90,7 @@ export default async function DashboardPage() {
                 : "สรุปสิ่งที่ผู้ดูแลระบบควรดูแลด้านสิทธิ์ การตั้งค่า และความพร้อมของระบบ โดยแยกจากงานติดตามปฏิบัติการ"
           }
           badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "Supabase connected mode" : "Mock dashboard mode"}
+          compact
         />
 
         {isManagerView ? (

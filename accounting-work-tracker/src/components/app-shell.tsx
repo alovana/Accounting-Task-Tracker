@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { RoleAccessBadge } from "@/components/auth/role-access-badge";
+import { SidebarDigitalClock } from "@/components/sidebar-digital-clock";
+import { SidebarNav } from "@/components/sidebar-nav";
 import { canAccess } from "@/lib/auth/permissions";
 import { getCurrentSessionUser } from "@/lib/auth/session";
-import { SidebarDigitalClock } from "@/components/sidebar-digital-clock";
 import { APP_NAME } from "@/lib/constants";
 
 type AppShellProps = {
@@ -41,17 +41,7 @@ export async function AppShell({ children }: AppShellProps) {
           <div className="flex h-full flex-col px-5 py-5">
             <SidebarDigitalClock />
 
-            <nav className="mt-6 space-y-2">
-              {visibleNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
+            <SidebarNav items={visibleNavItems} />
 
             <div className="mt-auto rounded-[24px] border border-slate-200 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Current Session</p>
@@ -68,8 +58,8 @@ export async function AppShell({ children }: AppShellProps) {
           <header className="border-b border-slate-200 bg-white/85 backdrop-blur">
             <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-6 py-5">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Clean SaaS Workspace</p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">{APP_NAME}</h2>
+                <h2 className="text-xl font-semibold tracking-tight text-slate-950">{APP_NAME}</h2>
+                <p className="mt-1 text-sm font-medium text-slate-500">My Dashboard</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-right sm:block">

@@ -2,9 +2,14 @@ type PageHeaderProps = {
   title: string;
   description: string;
   badge?: string;
+  compact?: boolean;
 };
 
-export function PageHeader({ title, description, badge }: PageHeaderProps) {
+export function PageHeader({ title, description, badge, compact = false }: PageHeaderProps) {
+  if (compact) {
+    return null;
+  }
+
   return (
     <div className="rounded-[30px] border border-slate-200 bg-white px-6 py-6 shadow-[0_20px_60px_-36px_rgba(15,23,42,0.25)] md:px-8 md:py-7">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
