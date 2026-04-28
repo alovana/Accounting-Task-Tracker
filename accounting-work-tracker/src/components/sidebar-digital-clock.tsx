@@ -47,13 +47,12 @@ export function SidebarDigitalClock() {
 
   return (
     <div className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_30px_70px_-35px_rgba(15,23,42,0.65)]">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-300">
-        Digital Clock
-      </p>
-      <div className="mt-4 font-mono text-[2.2rem] font-semibold leading-none tracking-[0.08em] text-white">
-        {time}
+      <div className="flex min-h-[156px] flex-col items-center justify-center text-center">
+        <div className="font-mono text-[2.2rem] font-semibold leading-none tracking-[0.08em] text-white">
+          {time}
+        </div>
+        <p className="mt-3 text-sm text-slate-300">{date}</p>
       </div>
-      <p className="mt-3 text-sm text-slate-300">{date}</p>
     </div>
   );
 }
