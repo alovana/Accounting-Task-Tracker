@@ -255,17 +255,6 @@ export function WorkCycleBoard({
     return customerGroups.find((group) => group.cycle.id === selectedCycleId) ?? customerGroups[0];
   }, [customerGroups, selectedCycleId]);
 
-  const allVisibleItems = customerGroups.flatMap((group) => group.filteredItems);
-  const myTaskSummary = useMemo(() => {
-    return {
-      total: allVisibleItems.length,
-      inProgress: allVisibleItems.filter((item) => item.status === "in_progress").length,
-      waiting: allVisibleItems.filter((item) => item.status === "waiting_customer").length,
-      blocked: allVisibleItems.filter((item) => item.status === "blocked").length,
-      overdue: allVisibleItems.filter((item) => isOverdue(item.dueDate)).length,
-    };
-  }, [allVisibleItems]);
-
   return (
     <div className="space-y-5">
       <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4 md:p-5">
@@ -388,29 +377,6 @@ export function WorkCycleBoard({
           </div>
         </div>
       </div>
-
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Visible Tasks</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-950">{myTaskSummary.total}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">In Progress</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-950">{myTaskSummary.inProgress}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Waiting Customer</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-950">{myTaskSummary.waiting}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Blocked</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-950">{myTaskSummary.blocked}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Overdue</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-950">{myTaskSummary.overdue}</p>
-        </div>
-      </section>
 
       {customerGroups.length === 0 || !selectedGroup ? (
         <EmptyState
