@@ -175,52 +175,29 @@ export function StaffPerformanceTable({ rows }: { rows: StaffSummary[] }) {
           <p className="mt-1 text-xs text-slate-500">เลือกชื่อเพื่อดู performance detail ด้านขวา</p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {rows.map((row) => {
             const isActive = row.owner === selectedRow.owner;
-            const rowRisk = getRiskLabel(row);
 
             return (
               <button
                 key={row.owner}
                 type="button"
                 onClick={() => setSelectedOwner(row.owner)}
-                className={`w-full rounded-2xl border p-4 text-left transition ${
+                className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
                   isActive
                     ? "border-slate-900 bg-slate-900 text-white shadow-lg"
                     : "border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-semibold ${
-                      isActive ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    {getInitials(row.owner)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={`truncate font-semibold ${isActive ? "text-white" : "text-slate-950"}`}>{row.owner}</p>
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                          isActive ? "bg-white/15 text-white" : rowRisk.className
-                        }`}
-                      >
-                        {rowRisk.label}
-                      </span>
-                    </div>
-                    <p className={`mt-1 text-xs ${isActive ? "text-slate-300" : "text-slate-500"}`}>
-                      งานทั้งหมด {row.total} · เสร็จ {row.completed}
-                    </p>
-                    <div className={`mt-3 h-2 rounded-full ${isActive ? "bg-white/15" : "bg-slate-200"}`}>
-                      <div
-                        className={`h-2 rounded-full ${isActive ? "bg-white" : getCompletionTone(row.completionRate)}`}
-                        style={{ width: `${row.completionRate}%` }}
-                      />
-                    </div>
-                  </div>
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold ${
+                    isActive ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  {getInitials(row.owner)}
                 </div>
+                <p className={`truncate font-medium ${isActive ? "text-white" : "text-slate-950"}`}>{row.owner}</p>
               </button>
             );
           })}
