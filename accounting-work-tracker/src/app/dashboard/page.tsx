@@ -85,22 +85,48 @@ export default async function DashboardPage() {
           compact
         />
 
-        {isManagerView ? (
+        {isAdminView ? (
           <>
             <KpiGrid items={kpis} />
 
-            {isAdminView ? (
-              <SectionCard title="Team Performance">
-                {staffRows.length === 0 ? (
-                  <EmptyState
-                    title="ยังไม่มีข้อมูลงานของทีม"
-                    description="เมื่อมี work items แล้ว ระบบจะแสดง performance summary ในส่วนนี้"
-                  />
-                ) : (
-                  <StaffPerformanceTable rows={staffRows} />
-                )}
+            <SectionCard title="Team Performance">
+              {staffRows.length === 0 ? (
+                <EmptyState
+                  title="ยังไม่มีข้อมูลงานของทีม"
+                  description="เมื่อมี work items แล้ว ระบบจะแสดง performance summary ในส่วนนี้"
+                />
+              ) : (
+                <StaffPerformanceTable rows={staffRows} />
+              )}
+            </SectionCard>
+
+            <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+              <SectionCard
+                title="Admin Focus"
+                description="ผู้ดูแลระบบจะถูกพาไปยังงานกำหนดค่าและการควบคุมระบบแทนการติดตามงานรายเดือนของบริษัท"
+              >
+                <ul className="space-y-3 text-sm leading-6 text-slate-700">
+                  <li>- ดูแลบัญชีผู้ใช้และ role assignments ในหน้า Settings</li>
+                  <li>- จัดการข้อมูลตั้งต้น เช่น ลูกค้าและ checklist templates</li>
+                  <li>- ตรวจ readiness, notification configuration และ deployment prep</li>
+                  <li>- มอบหมายการติดตาม execution และ work monitoring ให้ manager</li>
+                </ul>
               </SectionCard>
-            ) : null}
+
+              <SectionCard
+                title="Operational Views Moved to Manager"
+                description="ลดความสับสนของสิทธิ์โดยซ่อนมุมมอง operational สำหรับ admin"
+              >
+                <div className="space-y-3 text-sm leading-6 text-slate-700">
+                  <p>หน้า Monthly Work และ Team Reports จะไม่แสดงในเมนูของ admin แล้ว</p>
+                  <p>หากต้องทำงานด้านระบบต่อ ให้ใช้หน้าโปรไฟล์ / ตั้งค่า เพื่อจัดการรหัสผ่าน ผู้ใช้ notifications และ readiness</p>
+                </div>
+              </SectionCard>
+            </section>
+          </>
+        ) : isManagerView ? (
+          <>
+            <KpiGrid items={kpis} />
 
             <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
               <SectionCard
@@ -271,38 +297,6 @@ export default async function DashboardPage() {
                 ) : (
                   <StatusUpdateList updates={relevantUpdates.slice(0, 6)} />
                 )}
-              </SectionCard>
-            </section>
-          </>
-        ) : isAdminView ? (
-          <>
-            <section className="grid gap-4 md:grid-cols-3">
-              <SummaryCard label="ผู้ใช้งานทั้งหมด" value={staffRows.length.toString()} description="ผู้ที่มีข้อมูล workload ในระบบตอนนี้" tone="accent" />
-              <SummaryCard label="ลูกค้าในระบบ" value={customers.length.toString()} description="จำนวนลูกค้าที่ถูกสร้างไว้ในระบบ" />
-              <SummaryCard label="เมนูหลักของ admin" value="Customers, Checklists, Settings" description="โฟกัสงานกำหนดค่าและควบคุมระบบเป็นหลัก" />
-            </section>
-
-            <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <SectionCard
-                title="Admin Focus"
-                description="ผู้ดูแลระบบจะถูกพาไปยังงานกำหนดค่าและการควบคุมระบบแทนการติดตามงานรายเดือนของบริษัท"
-              >
-                <ul className="space-y-3 text-sm leading-6 text-slate-700">
-                  <li>- ดูแลบัญชีผู้ใช้และ role assignments ในหน้า Settings</li>
-                  <li>- จัดการข้อมูลตั้งต้น เช่น ลูกค้าและ checklist templates</li>
-                  <li>- ตรวจ readiness, notification configuration และ deployment prep</li>
-                  <li>- มอบหมายการติดตาม execution และ work monitoring ให้ manager</li>
-                </ul>
-              </SectionCard>
-
-              <SectionCard
-                title="Operational Views Moved to Manager"
-                description="ลดความสับสนของสิทธิ์โดยซ่อนมุมมอง operational สำหรับ admin"
-              >
-                <div className="space-y-3 text-sm leading-6 text-slate-700">
-                  <p>หน้า Monthly Work และ Team Reports จะไม่แสดงในเมนูของ admin แล้ว</p>
-                  <p>หากต้องทำงานด้านระบบต่อ ให้ใช้หน้าโปรไฟล์ / ตั้งค่า เพื่อจัดการรหัสผ่าน ผู้ใช้ notifications และ readiness</p>
-                </div>
               </SectionCard>
             </section>
           </>
