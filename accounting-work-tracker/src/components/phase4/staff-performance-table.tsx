@@ -175,7 +175,7 @@ export function StaffPerformanceTable({ rows }: { rows: StaffSummary[] }) {
           <p className="mt-1 text-xs text-slate-500">เลือกชื่อเพื่อดู performance detail ด้านขวา</p>
         </div>
 
-        <div className="space-y-2">
+        <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
           {rows.map((row) => {
             const isActive = row.owner === selectedRow.owner;
 
@@ -265,18 +265,6 @@ export function StaffPerformanceTable({ rows }: { rows: StaffSummary[] }) {
               <p className="mt-1 text-sm text-slate-300">โดนัทชาร์ตตามเปอร์เซ็นต์ความคืบหน้าแดง-เหลือง-เขียว</p>
             </div>
             <DonutChart completionRate={selectedRow.completionRate} total={selectedRow.total} />
-
-            <div className="mt-6 grid gap-2">
-              {metrics.map((metric) => (
-                <div key={metric.key} className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/6 px-3 py-2.5 text-sm">
-                  <div className="flex items-center gap-2 text-slate-200">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: metric.color }} />
-                    <span>{metric.label}</span>
-                  </div>
-                  <span className="font-semibold text-white">{metric.value}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
