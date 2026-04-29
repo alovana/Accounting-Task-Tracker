@@ -67,6 +67,17 @@ async function resolveUpdatedByDisplayName(rawUpdatedBy?: string) {
   return normalizePersonName(sessionUser?.fullName) || normalizePersonName(sessionUser?.email) || rawUpdatedBy?.trim() || "system";
 }
 
+function getWorkItemDetailUrl(workItemId: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const path = `/work-items/${workItemId}`;
+
+  if (!baseUrl) {
+    return path;
+  }
+
+  return `${baseUrl.replace(/\/$/, "")}${path}`;
+}
+
 async function attemptAutomaticLineDispatch(context: {
   workItemId: string;
   workCycleId: string;
@@ -283,6 +294,9 @@ export async function updateWorkItemStatusAction(
       updatedBy,
     );
 
+    const allFiles = await getWorkItemFiles();
+    const attachmentCount = allFiles.filter((file) => file.workItemId === workItemId).length;
+
     const message = buildLineNotificationMessage({
       eventType,
       customerName: workCycle?.customerName ?? "-",
@@ -290,6 +304,8 @@ export async function updateWorkItemStatusAction(
       assignedTo: assigneeName,
       blockedReason: nextStatus === "blocked" ? comment : undefined,
       dueDate: updatedWorkItem.dueDate,
+      attachmentCount,
+      workItemDetailUrl: attachmentCount > 0 ? getWorkItemDetailUrl(workItemId) : undefined,
     });
 
     const { error: notificationError } = await supabase.from("line_notifications").insert({
