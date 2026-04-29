@@ -55,13 +55,16 @@ export default async function DashboardPage() {
     ? workItemUpdates.filter((update) => visibleWorkItemIds.has(update.workItemId))
     : workItemUpdates;
 
-  const kpis = getDashboardKpis(visibleWorkCycles, visibleWorkItems);
-  const staffRows = getStaffSummaries(visibleWorkItems);
-  const cycleHealth = getWorkCycleHealth(visibleWorkCycles);
+  const dashboardWorkCycles = isAdminView ? workCycles : visibleWorkCycles;
+  const dashboardWorkItems = isAdminView ? workItems : visibleWorkItems;
+
+  const kpis = getDashboardKpis(dashboardWorkCycles, dashboardWorkItems);
+  const staffRows = getStaffSummaries(dashboardWorkItems);
+  const cycleHealth = getWorkCycleHealth(dashboardWorkCycles);
   const staffWorkloadGroups = getStaffWorkloadGroups(visibleWorkItems, cycleById);
-  const attentionItems = getAttentionItems(visibleWorkItems);
-  const recentItems = getRecentItems(visibleWorkItems);
-  const workloadStatus = getWorkloadStatusBreakdown(visibleWorkItems);
+  const attentionItems = getAttentionItems(dashboardWorkItems);
+  const recentItems = getRecentItems(dashboardWorkItems);
+  const workloadStatus = getWorkloadStatusBreakdown(dashboardWorkItems);
   const staffSummary = getStaffDashboardSummary(visibleWorkItems, visibleCustomers, user.id, user.fullName);
   const myAttentionItems = getAttentionItems(visibleWorkItems);
   const myRecentItems = getRecentItems(visibleWorkItems);
