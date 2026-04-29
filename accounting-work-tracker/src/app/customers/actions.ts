@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
+import { getChecklistTemplateItems, getChecklistTemplates, getCustomers } from "@/lib/supabase/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { generateMonthlyWorkForPeriod } from "@/lib/work-generation";
 import type { ServiceStatus } from "@/types/domain";
 
 export type CustomerActionState = {
@@ -48,6 +50,20 @@ function revalidateCustomerPaths() {
   revalidatePath("/work-cycles");
   revalidatePath("/dashboard");
   revalidatePath("/checklists");
+  revalidatePath("/reports");
+}
+
+function getCurrentBangkokPeriod() {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+  });
+  const parts = formatter.formatToParts(new Date());
+  const year = Number(parts.find((part) => part.type === "year")?.value || 0);
+  const month = Number(parts.find((part) => part.type === "month")?.value || 0);
+
+  return { year, month };
 }
 
 function mockModeError(message: string): CustomerActionState {
@@ -405,24 +421,56 @@ export async function createCustomerAction(
     return validationError;
   }
 
-  const { error } = await supabase.from("customers").insert({
-    code,
-    name,
-    tax_id: taxId,
-    business_type_id: businessTypeId,
-    assigned_user_id: assignedUserId,
-    manager_user_id: managerUserId,
-    service_status: serviceStatus,
-    notes,
-    active,
-  });
+  const { data: createdCustomer, error } = await supabase
+    .from("customers")
+    .insert({
+      code,
+      name,
+      tax_id: taxId,
+      business_type_id: businessTypeId,
+      assigned_user_id: assignedUserId,
+      manager_user_id: managerUserId,
+      service_status: serviceStatus,
+      notes,
+      active,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
-    return { error: error.message || "ไม่สามารถสร้างลูกค้าได้" };
+  if (error || !createdCustomer) {
+    return { error: error?.message || "ไม่สามารถสร้างลูกค้าได้" };
+  }
+
+  const [customers, checklistTemplates, checklistTemplateItems] = await Promise.all([
+    getCustomers(),
+    getChecklistTemplates(),
+    getChecklistTemplateItems(),
+  ]);
+
+  const { year, month } = getCurrentBangkokPeriod();
+
+  try {
+    await generateMonthlyWorkForPeriod({
+      supabase,
+      generatedBy: "customer-create-auto",
+      customers,
+      checklistTemplates,
+      checklistTemplateItems,
+      periodYear: year,
+      periodMonth: month,
+    });
+  } catch (generationError) {
+    console.error("Failed to auto-generate monthly work for new customer", generationError);
+    return {
+      error:
+        generationError instanceof Error
+          ? `สร้างลูกค้าแล้ว แต่ generate งานรายเดือนอัตโนมัติไม่สำเร็จ: ${generationError.message}`
+          : "สร้างลูกค้าแล้ว แต่ generate งานรายเดือนอัตโนมัติไม่สำเร็จ",
+    };
   }
 
   revalidateCustomerPaths();
-  return { success: `เพิ่มลูกค้า ${name} เรียบร้อยแล้ว` };
+  return { success: `เพิ่มลูกค้า ${name} และสร้างงานรายเดือนปัจจุบันเรียบร้อยแล้ว` };
 }
 
 export async function updateCustomerAction(
