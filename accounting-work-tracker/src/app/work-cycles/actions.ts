@@ -125,7 +125,7 @@ async function resolveWorkItemAssigneeName(
 
   const inferredRole = inferRole(workItem.assigned_to_name);
 
-  if (workItem.work_cycle_id && (workItem.template_item_id || inferredRole)) {
+  if (!directProfileId && workItem.work_cycle_id && (workItem.template_item_id || inferredRole)) {
     const [{ data: templateItem }, { data: workCycle }] = await Promise.all([
       supabase
         .from("checklist_template_items")
