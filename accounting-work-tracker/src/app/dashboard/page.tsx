@@ -29,6 +29,7 @@ import {
   getWorkItems,
   getWorkItemUpdates,
 } from "@/lib/supabase/queries";
+import { getVisibleWorkScope } from "@/lib/work-items/visibility";
 
 export default async function DashboardPage() {
   const user = await requirePermission("view_dashboard");
@@ -43,34 +44,24 @@ export default async function DashboardPage() {
   const isStaffView = user.role === "staff";
   const isAdminView = user.role === "admin";
 
-  const visibleCustomers = isStaffView
-    ? customers.filter(
-        (customer) =>
-          customer.assignedUserId === user.id ||
-          customer.managerUserId === user.id,
-      )
-    : customers;
-  const visibleCustomerIds = new Set(visibleCustomers.map((customer) => customer.id));
-  const visibleWorkCycles = workCycles.filter((cycle) => visibleCustomerIds.has(cycle.customerId));
-  const visibleWorkCycleIds = new Set(visibleWorkCycles.map((cycle) => cycle.id));
-  const visibleWorkItems = isStaffView
-    ? workItems.filter(
-        (item) => visibleWorkCycleIds.has(item.workCycleId) && item.assignedUserId === user.id,
-      )
-    : workItems;
-  const visibleWorkItemIds = new Set(visibleWorkItems.map((item) => item.id));
+  const { visibleCustomers, visibleWorkCycles, visibleWorkItems, visibleWorkItemIds, isManagerView: scopedManagerView } = getVisibleWorkScope({
+    currentUser: user,
+    customers,
+    workCycles,
+    workItems,
+  });
   const cycleById = new Map(visibleWorkCycles.map((cycle) => [cycle.id, cycle]));
   const relevantUpdates = isStaffView
     ? workItemUpdates.filter((update) => visibleWorkItemIds.has(update.workItemId))
     : workItemUpdates;
 
-  const kpis = getDashboardKpis(workCycles, workItems);
-  const staffRows = getStaffSummaries(workItems);
-  const cycleHealth = getWorkCycleHealth(workCycles);
+  const kpis = getDashboardKpis(visibleWorkCycles, visibleWorkItems);
+  const staffRows = getStaffSummaries(visibleWorkItems);
+  const cycleHealth = getWorkCycleHealth(visibleWorkCycles);
   const staffWorkloadGroups = getStaffWorkloadGroups(visibleWorkItems, cycleById);
-  const attentionItems = getAttentionItems(workItems);
-  const recentItems = getRecentItems(workItems);
-  const workloadStatus = getWorkloadStatusBreakdown(workItems);
+  const attentionItems = getAttentionItems(visibleWorkItems);
+  const recentItems = getRecentItems(visibleWorkItems);
+  const workloadStatus = getWorkloadStatusBreakdown(visibleWorkItems);
   const staffSummary = getStaffDashboardSummary(visibleWorkItems, visibleCustomers, user.id, user.fullName);
   const myAttentionItems = getAttentionItems(visibleWorkItems);
   const myRecentItems = getRecentItems(visibleWorkItems);
@@ -95,23 +86,8 @@ export default async function DashboardPage() {
           <>
             <KpiGrid items={kpis} />
 
-            <SectionCard
-              title="Staff Dashboard Snapshot"
-              description="ตัวอย่างมุมมองของพนักงานเพื่อให้หัวหน้าประเมินภาระงานที่ทีมเห็นจริงในแต่ละวัน"
-            >
-              <StaffDashboardCard
-                myOpenItems={staffSummary.myOpenItems}
-                myBlockedItems={staffSummary.myBlockedItems}
-                myWaitingCustomerItems={staffSummary.myWaitingCustomerItems}
-                myCustomers={staffSummary.myCustomers}
-              />
-            </SectionCard>
-
-            <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-              <SectionCard
-                title="Team Performance"
-                description="สรุปปริมาณงานของแต่ละคน เพื่อใช้ดู workload และติดตาม blocker ของทีม"
-              >
+            {isAdminView ? (
+              <SectionCard title="Team Performance">
                 {staffRows.length === 0 ? (
                   <EmptyState
                     title="ยังไม่มีข้อมูลงานของทีม"
@@ -120,6 +96,20 @@ export default async function DashboardPage() {
                 ) : (
                   <StaffPerformanceTable rows={staffRows} />
                 )}
+              </SectionCard>
+            ) : null}
+
+            <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+              <SectionCard
+                title="Staff Dashboard Snapshot"
+                description="ตัวอย่างมุมมองของพนักงานเพื่อให้หัวหน้าประเมินภาระงานที่ทีมเห็นจริงในแต่ละวัน"
+              >
+                <StaffDashboardCard
+                  myOpenItems={staffSummary.myOpenItems}
+                  myBlockedItems={staffSummary.myBlockedItems}
+                  myWaitingCustomerItems={staffSummary.myWaitingCustomerItems}
+                  myCustomers={staffSummary.myCustomers}
+                />
               </SectionCard>
 
               <div className="space-y-6">
@@ -139,17 +129,19 @@ export default async function DashboardPage() {
               </div>
             </section>
 
-            <SectionCard
-              title="Manager Team Queue"
-              description="รวมงานตามผู้รับผิดชอบแบบพับได้ เพื่อเริ่มจากภาพรวมแล้วค่อย drill down เป็นรายคน"
-            >
-              <StaffWorkloadGroups
-                groups={staffWorkloadGroups}
-                emptyTitle="ยังไม่มีคิวงานของทีม"
-                emptyDescription="เมื่อมี work items แล้ว ระบบจะแสดงการ์ดแยกตามผู้รับผิดชอบพร้อมสถานะสำคัญ"
-                defaultOpenCount={3}
-              />
-            </SectionCard>
+            {!isAdminView && scopedManagerView ? (
+              <SectionCard
+                title="Manager Team Queue"
+                description="รวมงานตามผู้รับผิดชอบแบบพับได้ เพื่อเริ่มจากภาพรวมแล้วค่อย drill down เป็นรายคน"
+              >
+                <StaffWorkloadGroups
+                  groups={staffWorkloadGroups}
+                  emptyTitle="ยังไม่มีคิวงานของทีม"
+                  emptyDescription="เมื่อมี work items แล้ว ระบบจะแสดงการ์ดแยกตามผู้รับผิดชอบพร้อมสถานะสำคัญ"
+                  defaultOpenCount={3}
+                />
+              </SectionCard>
+            ) : null}
 
             <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
               <SectionCard
