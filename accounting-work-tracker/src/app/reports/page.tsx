@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/phase2/empty-state";
-import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { StaffPerformanceTable } from "@/components/phase4/staff-performance-table";
 import { WorkCycleHealthList } from "@/components/phase4/work-cycle-health-list";
@@ -26,12 +25,6 @@ export default async function ReportsPage() {
   return (
     <AppShell>
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <PageHeader
-        title="Team Performance Report"
-        description="รายงานผลงานรายคนและสุขภาพของรอบงานในระดับ MVP"
-        badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "Supabase connected mode" : "Mock report mode"}
-      />
-
       <SectionCard
         title="Performance Summary"
         description="สรุปงานทั้งหมด กำลังทำ ติดปัญหา และเสร็จแล้วของแต่ละคน"
