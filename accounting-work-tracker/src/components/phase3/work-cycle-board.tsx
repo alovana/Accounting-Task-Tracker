@@ -18,6 +18,7 @@ type WorkCycleBoardProps = {
   workItemUpdates: WorkItemUpdate[];
   workItemFiles: WorkItemFile[];
   isStaffView: boolean;
+  currentUserId?: string;
   currentUserName: string;
 };
 
@@ -81,9 +82,13 @@ function isOverdue(value?: string) {
   return diff !== null && diff < 0;
 }
 
-function isMyTask(item: WorkItem, currentUserName: string, isStaffView: boolean) {
+function isMyTask(item: WorkItem, currentUserId: string | undefined, currentUserName: string, isStaffView: boolean) {
   if (isStaffView) {
     return true;
+  }
+
+  if (currentUserId) {
+    return item.assignedUserId === currentUserId;
   }
 
   return item.assignedTo === currentUserName;
@@ -143,6 +148,7 @@ export function WorkCycleBoard({
   workItemUpdates,
   workItemFiles,
   isStaffView,
+  currentUserId,
   currentUserName,
 }: WorkCycleBoardProps) {
   const latestUpdateMap = useMemo(
@@ -203,7 +209,7 @@ export function WorkCycleBoard({
             return false;
           }
 
-          if (viewMode === "my_tasks" && !isMyTask(item, currentUserName, isStaffView)) {
+          if (viewMode === "my_tasks" && !isMyTask(item, currentUserId, currentUserName, isStaffView)) {
             return false;
           }
 
@@ -218,7 +224,7 @@ export function WorkCycleBoard({
           cycle,
           filteredItems,
           allItems,
-          matchingMyItems: allItems.filter((item) => isMyTask(item, currentUserName, isStaffView)).length,
+          matchingMyItems: allItems.filter((item) => isMyTask(item, currentUserId, currentUserName, isStaffView)).length,
           completedCount: allItems.filter((item) => item.status === "completed" || item.status === "skipped").length,
           blockedCount: allItems.filter((item) => item.status === "blocked").length,
           waitingCount: allItems.filter((item) => item.status === "waiting_customer").length,
@@ -228,6 +234,7 @@ export function WorkCycleBoard({
       })
       .filter((value): value is CustomerGroup => Boolean(value));
   }, [
+    currentUserId,
     currentUserName,
     customerFilter,
     dueFilter,

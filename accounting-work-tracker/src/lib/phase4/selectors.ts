@@ -33,16 +33,17 @@ export function getDashboardKpis(workCycles: WorkCycle[], workItems: WorkItem[])
 }
 
 export function getStaffSummaries(workItems: WorkItem[]) {
-  const grouped = new Map<string, WorkItem[]>();
+  const grouped = new Map<string, { owner: string; items: WorkItem[] }>();
 
   workItems.forEach((item) => {
-    const current = grouped.get(item.assignedTo) ?? [];
-    current.push(item);
-    grouped.set(item.assignedTo, current);
+    const key = item.assignedUserId || `name:${item.assignedTo || "Unassigned"}`;
+    const current = grouped.get(key) ?? { owner: item.assignedTo || "Unassigned", items: [] };
+    current.items.push(item);
+    grouped.set(key, current);
   });
 
-  return Array.from(grouped.entries())
-    .map(([owner, items]) => ({
+  return Array.from(grouped.values())
+    .map(({ owner, items }) => ({
       owner,
       total: items.length,
       blocked: items.filter((item) => item.status === "blocked").length,
@@ -75,17 +76,17 @@ export function getRecentItems(workItems: WorkItem[], limit = 5) {
 }
 
 export function getStaffWorkloadGroups(workItems: WorkItem[], cycleById?: Map<string, WorkCycle>) {
-  const grouped = new Map<string, WorkItem[]>();
+  const grouped = new Map<string, { owner: string; items: WorkItem[] }>();
 
   workItems.forEach((item) => {
-    const owner = item.assignedTo || "Unassigned";
-    const current = grouped.get(owner) ?? [];
-    current.push(item);
-    grouped.set(owner, current);
+    const key = item.assignedUserId || `name:${item.assignedTo || "Unassigned"}`;
+    const current = grouped.get(key) ?? { owner: item.assignedTo || "Unassigned", items: [] };
+    current.items.push(item);
+    grouped.set(key, current);
   });
 
-  return Array.from(grouped.entries())
-    .map(([owner, items]) => ({
+  return Array.from(grouped.values())
+    .map(({ owner, items }) => ({
       owner,
       total: items.length,
       open: items.filter((item) => OPEN_STATUSES.includes(item.status)).length,
@@ -118,13 +119,18 @@ export function getWorkloadStatusBreakdown(workItems: WorkItem[]) {
 export function getStaffDashboardSummary(
   workItems: WorkItem[],
   customers: Customer[],
-  owner = "พนักงาน A"
+  ownerId?: string,
+  ownerName = "พนักงาน A"
 ) {
-  const myItems = workItems.filter((item) => item.assignedTo === owner);
-  const myCustomers = customers.filter((item) => item.assignedUserName === owner);
+  const myItems = ownerId
+    ? workItems.filter((item) => item.assignedUserId === ownerId)
+    : workItems.filter((item) => item.assignedTo === ownerName);
+  const myCustomers = ownerId
+    ? customers.filter((item) => item.assignedUserId === ownerId)
+    : customers.filter((item) => item.assignedUserName === ownerName);
 
   return {
-    owner,
+    owner: ownerName,
     myOpenItems: myItems.filter(
       (item) => item.status === "not_started" || item.status === "in_progress"
     ).length,

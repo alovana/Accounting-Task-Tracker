@@ -47,9 +47,7 @@ export default async function DashboardPage() {
     ? customers.filter(
         (customer) =>
           customer.assignedUserId === user.id ||
-          customer.managerUserId === user.id ||
-          customer.assignedUserName === user.fullName ||
-          customer.managerUserName === user.fullName,
+          customer.managerUserId === user.id,
       )
     : customers;
   const visibleCustomerIds = new Set(visibleCustomers.map((customer) => customer.id));
@@ -57,7 +55,7 @@ export default async function DashboardPage() {
   const visibleWorkCycleIds = new Set(visibleWorkCycles.map((cycle) => cycle.id));
   const visibleWorkItems = isStaffView
     ? workItems.filter(
-        (item) => visibleWorkCycleIds.has(item.workCycleId) && item.assignedTo === user.fullName,
+        (item) => visibleWorkCycleIds.has(item.workCycleId) && item.assignedUserId === user.id,
       )
     : workItems;
   const visibleWorkItemIds = new Set(visibleWorkItems.map((item) => item.id));
@@ -73,7 +71,7 @@ export default async function DashboardPage() {
   const attentionItems = getAttentionItems(workItems);
   const recentItems = getRecentItems(workItems);
   const workloadStatus = getWorkloadStatusBreakdown(workItems);
-  const staffSummary = getStaffDashboardSummary(visibleWorkItems, visibleCustomers, user.fullName);
+  const staffSummary = getStaffDashboardSummary(visibleWorkItems, visibleCustomers, user.id, user.fullName);
   const myAttentionItems = getAttentionItems(visibleWorkItems);
   const myRecentItems = getRecentItems(visibleWorkItems);
 

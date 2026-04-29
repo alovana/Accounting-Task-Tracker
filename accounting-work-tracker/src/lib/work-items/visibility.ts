@@ -18,9 +18,7 @@ export function getVisibleWorkScope(params: {
     ? customers.filter(
         (customer) =>
           customer.assignedUserId === currentUser.id ||
-          customer.managerUserId === currentUser.id ||
-          customer.assignedUserName === currentUser.fullName ||
-          customer.managerUserName === currentUser.fullName,
+          customer.managerUserId === currentUser.id,
       )
     : customers;
   const visibleCustomerIds = new Set(visibleCustomers.map((customer) => customer.id));
@@ -29,7 +27,7 @@ export function getVisibleWorkScope(params: {
   const visibleWorkItems = workItems.filter(
     (item) =>
       visibleWorkCycleIds.has(item.workCycleId) &&
-      (!isStaffView || item.assignedTo === currentUser.fullName),
+      (!isStaffView || item.assignedUserId === currentUser.id),
   );
 
   return {
