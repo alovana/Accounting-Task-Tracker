@@ -66,6 +66,39 @@ function getCurrentBangkokPeriod() {
   return { year, month };
 }
 
+async function ensureCurrentPeriodWorkGenerated(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+): Promise<CustomerActionState | null> {
+  const [customers, checklistTemplates, checklistTemplateItems] = await Promise.all([
+    getCustomers(),
+    getChecklistTemplates(),
+    getChecklistTemplateItems(),
+  ]);
+
+  const { year, month } = getCurrentBangkokPeriod();
+
+  try {
+    await generateMonthlyWorkForPeriod({
+      supabase,
+      generatedBy: "customer-auto-sync",
+      customers,
+      checklistTemplates,
+      checklistTemplateItems,
+      periodYear: year,
+      periodMonth: month,
+    });
+  } catch (generationError) {
+    return {
+      error:
+        generationError instanceof Error
+          ? `generate งานรายเดือนอัตโนมัติไม่สำเร็จ: ${generationError.message}`
+          : "generate งานรายเดือนอัตโนมัติไม่สำเร็จ",
+    };
+  }
+
+  return null;
+}
+
 function mockModeError(message: string): CustomerActionState {
   return { error: message };
 }
@@ -441,31 +474,11 @@ export async function createCustomerAction(
     return { error: error?.message || "ไม่สามารถสร้างลูกค้าได้" };
   }
 
-  const [customers, checklistTemplates, checklistTemplateItems] = await Promise.all([
-    getCustomers(),
-    getChecklistTemplates(),
-    getChecklistTemplateItems(),
-  ]);
-
-  const { year, month } = getCurrentBangkokPeriod();
-
-  try {
-    await generateMonthlyWorkForPeriod({
-      supabase,
-      generatedBy: "customer-create-auto",
-      customers,
-      checklistTemplates,
-      checklistTemplateItems,
-      periodYear: year,
-      periodMonth: month,
-    });
-  } catch (generationError) {
-    console.error("Failed to auto-generate monthly work for new customer", generationError);
+  const generationError = await ensureCurrentPeriodWorkGenerated(supabase);
+  if (generationError) {
+    console.error("Failed to auto-generate monthly work for new customer", generationError.error);
     return {
-      error:
-        generationError instanceof Error
-          ? `สร้างลูกค้าแล้ว แต่ generate งานรายเดือนอัตโนมัติไม่สำเร็จ: ${generationError.message}`
-          : "สร้างลูกค้าแล้ว แต่ generate งานรายเดือนอัตโนมัติไม่สำเร็จ",
+      error: `สร้างลูกค้าแล้ว แต่ ${generationError.error}`,
     };
   }
 
@@ -546,8 +559,15 @@ export async function updateCustomerAction(
     return syncError;
   }
 
+  const generationError = await ensureCurrentPeriodWorkGenerated(supabase);
+  if (generationError) {
+    return {
+      error: `อัปเดตข้อมูลลูกค้าแล้ว แต่ ${generationError.error}`,
+    };
+  }
+
   revalidateCustomerPaths();
-  return { success: `อัปเดตข้อมูลลูกค้า ${name} เรียบร้อยแล้ว` };
+  return { success: `อัปเดตข้อมูลลูกค้า ${name} และตรวจสอบงานรายเดือนปัจจุบันเรียบร้อยแล้ว` };
 }
 
 export async function updateCustomerAssignmentsAction(
