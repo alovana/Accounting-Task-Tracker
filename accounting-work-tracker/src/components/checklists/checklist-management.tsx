@@ -101,15 +101,9 @@ function ItemCreateForm({ templateId, disabled }: { templateId: string; disabled
           <input name="dueDayOffset" type="number" defaultValue={0} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" disabled={disabled || isPending} />
         </div>
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700">รายละเอียดงาน</label>
-          <textarea name="description" rows={3} placeholder="คำอธิบายงานย่อย" className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" disabled={disabled || isPending} />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700">Due day detail</label>
-          <textarea name="dueDayDetail" rows={3} placeholder="เช่น ภายในวันที่ 5 หลังรับ statement ครบ" className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" disabled={disabled || isPending} />
-        </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-slate-700">รายละเอียดงาน</label>
+        <textarea name="description" rows={3} placeholder="คำอธิบายงานย่อย" className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" disabled={disabled || isPending} />
       </div>
       <div className="flex flex-wrap gap-4 text-sm text-slate-700">
         <label className="flex items-center gap-2"><input type="checkbox" name="isRequired" checked={isRequired} onChange={() => setIsRequired((current) => !current)} disabled={disabled || isPending} />งานบังคับ</label>
@@ -156,15 +150,9 @@ function TemplateItemEditor({ item, disabled }: { item: ChecklistTemplateItem; d
             <input name="dueDayOffset" type="number" defaultValue={item.dueDayOffset} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" disabled={disabled || isPending || isDeletePending} />
           </div>
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">รายละเอียดงาน</label>
-            <textarea name="description" rows={3} defaultValue={item.description} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" disabled={disabled || isPending || isDeletePending} />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Due day detail</label>
-            <textarea name="dueDayDetail" rows={3} defaultValue={item.dueDayDetail || ""} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" disabled={disabled || isPending || isDeletePending} />
-          </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700">รายละเอียดงาน</label>
+          <textarea name="description" rows={3} defaultValue={item.description} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" disabled={disabled || isPending || isDeletePending} />
         </div>
         <div className="flex flex-wrap gap-4 text-sm text-slate-700">
           <label className="flex items-center gap-2"><input type="checkbox" name="isRequired" checked={isRequired} onChange={() => setIsRequired((current) => !current)} disabled={disabled || isPending || isDeletePending} />งานบังคับ</label>
