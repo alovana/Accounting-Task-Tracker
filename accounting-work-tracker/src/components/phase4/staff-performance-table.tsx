@@ -18,15 +18,8 @@ type MetricItem = {
   value: number;
   tone: string;
   softTone: string;
+  color: string;
 };
-
-const chartColors = [
-  "#0f172a",
-  "#3b82f6",
-  "#f59e0b",
-  "#ef4444",
-  "#10b981",
-];
 
 function getCompletionTone(rate: number) {
   if (rate >= 80) {
@@ -34,26 +27,38 @@ function getCompletionTone(rate: number) {
   }
 
   if (rate >= 50) {
-    return "bg-blue-500";
+    return "bg-amber-400";
   }
 
-  return "bg-amber-500";
+  return "bg-rose-500";
+}
+
+function getCompletionColor(rate: number) {
+  if (rate >= 80) {
+    return "#10b981";
+  }
+
+  if (rate >= 50) {
+    return "#f59e0b";
+  }
+
+  return "#ef4444";
 }
 
 function getRiskLabel(row: StaffSummary) {
   if (row.blocked >= 2) {
-    return { label: "Risk", className: "border border-rose-200 bg-rose-50 text-rose-700" };
+    return { label: "Risk", className: "border border-rose-200 bg-rose-50/90 text-rose-700" };
   }
 
   if (row.waitingCustomer >= 2) {
-    return { label: "Waiting", className: "border border-amber-200 bg-amber-50 text-amber-700" };
+    return { label: "Waiting", className: "border border-amber-200 bg-amber-50/90 text-amber-700" };
   }
 
   if (row.completionRate >= 80) {
-    return { label: "Healthy", className: "border border-emerald-200 bg-emerald-50 text-emerald-700" };
+    return { label: "Healthy", className: "border border-emerald-200 bg-emerald-50/90 text-emerald-700" };
   }
 
-  return { label: "Active", className: "border border-blue-200 bg-blue-50 text-blue-700" };
+  return { label: "Active", className: "border border-blue-200 bg-blue-50/90 text-blue-700" };
 }
 
 function getInitials(name: string) {
@@ -73,6 +78,7 @@ function getMetrics(row: StaffSummary): MetricItem[] {
       value: row.inProgress,
       tone: "bg-slate-900",
       softTone: "bg-slate-100 text-slate-700",
+      color: "#334155",
     },
     {
       key: "blocked",
@@ -80,13 +86,15 @@ function getMetrics(row: StaffSummary): MetricItem[] {
       value: row.blocked,
       tone: "bg-rose-500",
       softTone: "bg-rose-50 text-rose-700",
+      color: "#ef4444",
     },
     {
       key: "waiting",
       label: "รอลูกค้า",
       value: row.waitingCustomer,
-      tone: "bg-amber-500",
+      tone: "bg-amber-400",
       softTone: "bg-amber-50 text-amber-700",
+      color: "#f59e0b",
     },
     {
       key: "completed",
@@ -94,30 +102,28 @@ function getMetrics(row: StaffSummary): MetricItem[] {
       value: row.completed,
       tone: "bg-emerald-500",
       softTone: "bg-emerald-50 text-emerald-700",
+      color: "#10b981",
     },
   ];
 }
 
-function DonutChart({ metrics, total }: { metrics: MetricItem[]; total: number }) {
-  const safeTotal = total || 1;
-  let currentAngle = 0;
-  const segments = metrics.map((metric, index) => {
-    const angle = (metric.value / safeTotal) * 360;
-    const start = currentAngle;
-    currentAngle += angle;
-    return `${chartColors[index]} ${start}deg ${currentAngle}deg`;
-  });
+function DonutChart({ completionRate, total }: { completionRate: number; total: number }) {
+  const progressAngle = Math.max(0, Math.min(completionRate, 100)) * 3.6;
+  const progressColor = getCompletionColor(completionRate);
 
   return (
-    <div className="relative mx-auto h-52 w-52">
+    <div className="relative mx-auto h-56 w-56">
       <div
-        className="h-full w-full rounded-full"
-        style={{ background: `conic-gradient(${segments.join(", ")})` }}
+        className="h-full w-full rounded-full shadow-[inset_0_2px_24px_rgba(255,255,255,0.18)]"
+        style={{
+          background: `conic-gradient(${progressColor} 0deg ${progressAngle}deg, rgba(255,255,255,0.16) ${progressAngle}deg 360deg)`,
+        }}
       />
-      <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-white text-center shadow-inner">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Completion</p>
-        <p className="mt-2 text-3xl font-semibold text-slate-950">{total ? Math.round((metrics.find((item) => item.key === "completed")?.value ?? 0) / total * 100) : 0}%</p>
-        <p className="mt-1 text-sm text-slate-500">จากทั้งหมด {total} งาน</p>
+      <div className="absolute inset-4 rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.28),transparent_55%)]" />
+      <div className="absolute inset-[22%] flex flex-col items-center justify-center rounded-full border border-white/20 bg-slate-950 text-center shadow-[0_18px_30px_-22px_rgba(15,23,42,0.9)] backdrop-blur">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">Completion</p>
+        <p className="mt-2 text-4xl font-semibold text-white">{completionRate}%</p>
+        <p className="mt-1 text-sm text-slate-400">จากทั้งหมด {total} งาน</p>
       </div>
     </div>
   );
@@ -221,22 +227,23 @@ export function StaffPerformanceTable({ rows }: { rows: StaffSummary[] }) {
         </div>
       </aside>
 
-      <section className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-white via-white to-slate-50 p-6 shadow-[0_20px_50px_-36px_rgba(15,23,42,0.35)]">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-start lg:justify-between">
+      <section className="relative overflow-hidden rounded-[30px] border border-slate-200/80 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.18),transparent_30%),radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(135deg,#0f172a_0%,#111827_42%,#1e293b_100%)] p-6 text-white shadow-[0_28px_70px_-42px_rgba(15,23,42,0.8)]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent_34%,transparent_66%,rgba(255,255,255,0.03))]" />
+        <div className="relative flex flex-col gap-4 border-b border-white/10 pb-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h3 className="text-2xl font-semibold text-slate-950">{selectedRow.owner}</h3>
+              <h3 className="text-2xl font-semibold text-white">{selectedRow.owner}</h3>
               <span className={`rounded-full px-3 py-1 text-xs font-medium ${risk.className}`}>{risk.label}</span>
             </div>
-            <p className="mt-2 text-sm text-slate-500">ภาพรวมภาระงานและความคืบหน้าของพนักงานที่เลือก</p>
+            <p className="mt-2 text-sm text-slate-300">ภาพรวมภาระงานและความคืบหน้าของพนักงานที่เลือก</p>
           </div>
 
-          <div className="min-w-[220px]">
-            <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+          <div className="min-w-[220px] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm">
+            <div className="flex items-center justify-between text-xs font-medium text-slate-300">
               <span>Completion rate</span>
-              <span>{selectedRow.completionRate}%</span>
+              <span className="text-white">{selectedRow.completionRate}%</span>
             </div>
-            <div className="mt-2 h-2.5 rounded-full bg-slate-200">
+            <div className="mt-2 h-2.5 rounded-full bg-white/10">
               <div
                 className={`h-2.5 rounded-full ${getCompletionTone(selectedRow.completionRate)}`}
                 style={{ width: `${selectedRow.completionRate}%` }}
@@ -245,51 +252,51 @@ export function StaffPerformanceTable({ rows }: { rows: StaffSummary[] }) {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl bg-slate-900 px-4 py-4 text-white">
+        <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
             <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">งานทั้งหมด</p>
-            <p className="mt-2 text-3xl font-semibold">{selectedRow.total}</p>
+            <p className="mt-2 text-3xl font-semibold text-white">{selectedRow.total}</p>
           </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-700">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-400">เสร็จแล้ว</p>
-            <p className="mt-2 text-3xl font-semibold">{selectedRow.completed}</p>
+          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-4 text-emerald-200 backdrop-blur-sm">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-100/70">เสร็จแล้ว</p>
+            <p className="mt-2 text-3xl font-semibold text-white">{selectedRow.completed}</p>
           </div>
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-rose-700">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-rose-400">ติดปัญหา</p>
-            <p className="mt-2 text-3xl font-semibold">{selectedRow.blocked}</p>
+          <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-4 text-rose-200 backdrop-blur-sm">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-rose-100/70">ติดปัญหา</p>
+            <p className="mt-2 text-3xl font-semibold text-white">{selectedRow.blocked}</p>
           </div>
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-blue-700">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-blue-400">Completion</p>
-            <p className="mt-2 text-3xl font-semibold">{selectedRow.completionRate}%</p>
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-4 text-amber-100 backdrop-blur-sm">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-amber-100/70">Completion</p>
+            <p className="mt-2 text-3xl font-semibold text-white">{selectedRow.completionRate}%</p>
           </div>
         </div>
 
-        <div className="mt-8 grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5">
+        <div className="relative mt-8 grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-3xl border border-white/10 bg-white/6 p-5 backdrop-blur-sm">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <p className="text-base font-semibold text-slate-950">Work Status Breakdown</p>
-                <p className="mt-1 text-sm text-slate-500">กราฟแท่งเปรียบเทียบจำนวนงานแต่ละสถานะ</p>
+                <p className="text-base font-semibold text-white">Work Status Breakdown</p>
+                <p className="mt-1 text-sm text-slate-300">กราฟแท่งเปรียบเทียบจำนวนงานแต่ละสถานะ</p>
               </div>
             </div>
             <BarChart metrics={metrics} maxValue={maxMetricValue} />
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <div className="rounded-3xl border border-white/10 bg-white/6 p-5 backdrop-blur-sm">
             <div className="mb-5">
-              <p className="text-base font-semibold text-slate-950">Work Distribution</p>
-              <p className="mt-1 text-sm text-slate-500">โดนัทชาร์ตสัดส่วนงานของพนักงานคนนี้</p>
+              <p className="text-base font-semibold text-white">Work Distribution</p>
+              <p className="mt-1 text-sm text-slate-300">โดนัทชาร์ตตามเปอร์เซ็นต์ความคืบหน้าแดง-เหลือง-เขียว</p>
             </div>
-            <DonutChart metrics={metrics} total={selectedRow.total} />
+            <DonutChart completionRate={selectedRow.completionRate} total={selectedRow.total} />
 
             <div className="mt-6 grid gap-2">
-              {metrics.map((metric, index) => (
-                <div key={metric.key} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5 text-sm">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: chartColors[index] }} />
+              {metrics.map((metric) => (
+                <div key={metric.key} className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/6 px-3 py-2.5 text-sm">
+                  <div className="flex items-center gap-2 text-slate-200">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: metric.color }} />
                     <span>{metric.label}</span>
                   </div>
-                  <span className="font-semibold text-slate-900">{metric.value}</span>
+                  <span className="font-semibold text-white">{metric.value}</span>
                 </div>
               ))}
             </div>

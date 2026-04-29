@@ -87,8 +87,6 @@ export default async function DashboardPage() {
 
         {isAdminView ? (
           <>
-            <KpiGrid items={kpis} />
-
             <SectionCard title="Team Performance">
               {staffRows.length === 0 ? (
                 <EmptyState
@@ -99,6 +97,8 @@ export default async function DashboardPage() {
                 <StaffPerformanceTable rows={staffRows} />
               )}
             </SectionCard>
+
+            <KpiGrid items={kpis} />
 
             <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
               <SectionCard
