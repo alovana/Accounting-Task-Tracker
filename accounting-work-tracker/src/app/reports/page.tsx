@@ -7,14 +7,21 @@ import { WorkCycleHealthList } from "@/components/phase4/work-cycle-health-list"
 import { WorkloadStatusList } from "@/components/phase4/workload-status-list";
 import { requirePermission } from "@/lib/auth/session";
 import { getStaffSummaries, getWorkCycleHealth, getWorkloadStatusBreakdown } from "@/lib/phase4/selectors";
-import { getWorkCycles, getWorkItems } from "@/lib/supabase/queries";
+import { getWorkCycles, getWorkItems, getCustomers } from "@/lib/supabase/queries";
+import { getVisibleWorkScope } from "@/lib/work-items/visibility";
 
 export default async function ReportsPage() {
-  await requirePermission("view_reports");
-  const [workCycles, workItems] = await Promise.all([getWorkCycles(), getWorkItems()]);
-  const staffRows = getStaffSummaries(workItems);
-  const cycleHealth = getWorkCycleHealth(workCycles);
-  const workloadStatus = getWorkloadStatusBreakdown(workItems);
+  const currentUser = await requirePermission("view_reports");
+  const [customers, workCycles, workItems] = await Promise.all([getCustomers(), getWorkCycles(), getWorkItems()]);
+  const { visibleWorkCycles, visibleWorkItems } = getVisibleWorkScope({
+    currentUser,
+    customers,
+    workCycles,
+    workItems,
+  });
+  const staffRows = getStaffSummaries(visibleWorkItems);
+  const cycleHealth = getWorkCycleHealth(visibleWorkCycles);
+  const workloadStatus = getWorkloadStatusBreakdown(visibleWorkItems);
 
   return (
     <AppShell>

@@ -6,6 +6,10 @@ function isStaffScopedUser(role: string) {
   return role === "staff";
 }
 
+function isManagerScopedUser(role: string) {
+  return role === "manager";
+}
+
 export function getVisibleWorkScope(params: {
   currentUser: SessionUser;
   customers: Customer[];
@@ -14,7 +18,8 @@ export function getVisibleWorkScope(params: {
 }) {
   const { currentUser, customers, workCycles, workItems } = params;
   const isStaffView = isStaffScopedUser(currentUser.role);
-  const visibleCustomers = isStaffView
+  const isManagerView = isManagerScopedUser(currentUser.role);
+  const visibleCustomers = isStaffView || isManagerView
     ? customers.filter(
         (customer) =>
           customer.assignedUserId === currentUser.id ||
@@ -24,14 +29,25 @@ export function getVisibleWorkScope(params: {
   const visibleCustomerIds = new Set(visibleCustomers.map((customer) => customer.id));
   const visibleWorkCycles = workCycles.filter((cycle) => visibleCustomerIds.has(cycle.customerId));
   const visibleWorkCycleIds = new Set(visibleWorkCycles.map((cycle) => cycle.id));
-  const visibleWorkItems = workItems.filter(
-    (item) =>
-      visibleWorkCycleIds.has(item.workCycleId) &&
-      (!isStaffView || item.assignedUserId === currentUser.id),
-  );
+  const visibleWorkItems = workItems.filter((item) => {
+    if (!visibleWorkCycleIds.has(item.workCycleId)) {
+      return false;
+    }
+
+    if (isStaffView) {
+      return item.assignedUserId === currentUser.id;
+    }
+
+    if (isManagerView) {
+      return true;
+    }
+
+    return true;
+  });
 
   return {
     isStaffView,
+    isManagerView,
     visibleCustomers,
     visibleWorkCycles,
     visibleWorkItems,
