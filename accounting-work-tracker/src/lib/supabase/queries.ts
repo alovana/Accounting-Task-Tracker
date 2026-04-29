@@ -264,7 +264,7 @@ export async function getWorkItems(): Promise<WorkItem[]> {
   const { data, error } = await supabase
     .from("work_items")
     .select(
-      "id, work_cycle_id, title, assigned_to_name, status, due_date, blocked_reason, note"
+      "id, work_cycle_id, title, assigned_user_id, assigned_to_name, status, due_date, blocked_reason, note"
     )
     .order("due_date", { ascending: true });
 
@@ -273,11 +273,40 @@ export async function getWorkItems(): Promise<WorkItem[]> {
     return workItems;
   }
 
+  const profileIds = Array.from(
+    new Set(
+      (data || [])
+        .map((item) => item.assigned_user_id)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+
+  const profileNameMap = new Map<string, string>();
+
+  if (profileIds.length > 0) {
+    const { data: profiles, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("id, full_name, email")
+      .in("id", profileIds);
+
+    if (profileError) {
+      console.error("Failed to load work item assignee profiles", profileError);
+    } else {
+      for (const profile of profiles) {
+        profileNameMap.set(profile.id, profile.full_name?.trim() || profile.email || "-");
+      }
+    }
+  }
+
   return data.map((item) => ({
     id: item.id,
     workCycleId: item.work_cycle_id,
     title: item.title,
-    assignedTo: item.assigned_to_name || "-",
+    assignedUserId: item.assigned_user_id ?? undefined,
+    assignedTo:
+      (item.assigned_user_id && profileNameMap.get(item.assigned_user_id)) ||
+      item.assigned_to_name ||
+      "-",
     status: item.status,
     dueDate: item.due_date ?? "-",
     blockedReason: item.blocked_reason ?? undefined,

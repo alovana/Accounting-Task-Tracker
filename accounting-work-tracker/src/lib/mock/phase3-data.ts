@@ -23,6 +23,7 @@ export type WorkItem = {
   id: string;
   workCycleId: string;
   title: string;
+  assignedUserId?: string;
   assignedTo: string;
   status: WorkItemStatus;
   dueDate: string;
@@ -78,6 +79,7 @@ export const workItems: WorkItem[] = [
     id: "wi-1",
     workCycleId: "wc-2026-03-001",
     title: "ตรวจสอบรายรับและค่าใช้จ่าย",
+    assignedUserId: "user-staff-a",
     assignedTo: "พนักงาน A",
     status: "in_progress",
     dueDate: "2026-04-05",
@@ -87,6 +89,7 @@ export const workItems: WorkItem[] = [
     id: "wi-2",
     workCycleId: "wc-2026-03-001",
     title: "กระทบยอดธนาคาร",
+    assignedUserId: "user-staff-a",
     assignedTo: "พนักงาน A",
     status: "waiting_customer",
     dueDate: "2026-04-07",
@@ -96,6 +99,7 @@ export const workItems: WorkItem[] = [
     id: "wi-3",
     workCycleId: "wc-2026-03-002",
     title: "ตรวจสอบสต็อกคงเหลือ",
+    assignedUserId: "user-staff-b",
     assignedTo: "พนักงาน B",
     status: "blocked",
     dueDate: "2026-04-04",
@@ -105,6 +109,7 @@ export const workItems: WorkItem[] = [
     id: "wi-4",
     workCycleId: "wc-2026-03-002",
     title: "ตรวจสอบเจ้าหนี้และลูกหนี้",
+    assignedUserId: "user-manager-1",
     assignedTo: "หัวหน้าทีม 1",
     status: "not_started",
     dueDate: "2026-04-08",
@@ -113,6 +118,7 @@ export const workItems: WorkItem[] = [
     id: "wi-5",
     workCycleId: "wc-2026-03-003",
     title: "เตรียมรายการเปิดรอบเดือนแรก",
+    assignedUserId: "user-staff-c",
     assignedTo: "พนักงาน C",
     status: "not_started",
     dueDate: "2026-04-10",
