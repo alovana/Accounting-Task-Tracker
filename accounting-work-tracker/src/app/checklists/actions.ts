@@ -159,7 +159,6 @@ export async function createChecklistTemplateItemAction(
   const templateId = normalizeText(formData.get("templateId"));
   const title = normalizeText(formData.get("title"));
   const description = normalizeText(formData.get("description"));
-  const dueDayDetail = normalizeText(formData.get("dueDayDetail"));
   const sortOrder = normalizeInteger(formData.get("sortOrder"), 1);
   const dueDayOffset = normalizeInteger(formData.get("dueDayOffset"), 0);
   const isRequired = normalizeBoolean(formData.get("isRequired"));
@@ -179,7 +178,6 @@ export async function createChecklistTemplateItemAction(
     template_id: templateId,
     title,
     description,
-    due_day_detail: dueDayDetail,
     sort_order: sortOrder,
     due_day_offset: dueDayOffset,
     is_required: isRequired,
@@ -208,7 +206,6 @@ export async function updateChecklistTemplateItemAction(
   const id = normalizeText(formData.get("id"));
   const title = normalizeText(formData.get("title"));
   const description = normalizeText(formData.get("description"));
-  const dueDayDetail = normalizeText(formData.get("dueDayDetail"));
   const sortOrder = normalizeInteger(formData.get("sortOrder"), 1);
   const dueDayOffset = normalizeInteger(formData.get("dueDayOffset"), 0);
   const isRequired = normalizeBoolean(formData.get("isRequired"));
@@ -229,7 +226,6 @@ export async function updateChecklistTemplateItemAction(
     .update({
       title,
       description,
-      due_day_detail: dueDayDetail,
       sort_order: sortOrder,
       due_day_offset: dueDayOffset,
       is_required: isRequired,
