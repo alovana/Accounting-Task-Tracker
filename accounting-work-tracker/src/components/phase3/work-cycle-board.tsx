@@ -4,19 +4,16 @@ import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/phase2/empty-state";
 import { StatusBadge } from "@/components/phase2/status-badge";
 import { WorkCycleStatusBadge } from "@/components/phase3/work-cycle-status-badge";
-import { WorkItemAttachments } from "@/components/phase3/work-item-attachments";
 import { WorkItemStatusBadge } from "@/components/phase3/work-item-status-badge";
 import { WorkItemStatusForm } from "@/components/phase3/work-item-status-form";
 import { getRecommendedCycleStatus } from "@/lib/phase3/selectors";
 import { getNextAllowedStatuses, getWorkItemStatusLabel } from "@/lib/phase3/status-mappers";
 import type { WorkCycle, WorkItem, WorkItemUpdate, WorkItemStatus } from "@/lib/mock/phase3-data";
-import type { WorkItemFile } from "@/types/attachments";
 
 type WorkCycleBoardProps = {
   workCycles: WorkCycle[];
   workItems: WorkItem[];
   workItemUpdates: WorkItemUpdate[];
-  workItemFiles: WorkItemFile[];
   isStaffView: boolean;
   currentUserId?: string;
   currentUserName: string;
@@ -117,7 +114,6 @@ function matchesQuery(
   item: WorkItem,
   cycle: WorkCycle,
   latestComment: string | undefined,
-  fileNames: string[],
   normalizedQuery: string,
 ) {
   if (!normalizedQuery) {
@@ -133,7 +129,6 @@ function matchesQuery(
     item.note,
     item.blockedReason,
     latestComment,
-    ...fileNames,
   ]
     .filter(Boolean)
     .join(" ")
@@ -146,7 +141,6 @@ export function WorkCycleBoard({
   workCycles,
   workItems,
   workItemUpdates,
-  workItemFiles,
   isStaffView,
   currentUserId,
   currentUserName,
@@ -155,18 +149,6 @@ export function WorkCycleBoard({
     () => new Map(workItemUpdates.map((update) => [update.workItemId, update])),
     [workItemUpdates],
   );
-  const filesByWorkItemId = useMemo(() => {
-    const grouped = new Map<string, WorkItemFile[]>();
-
-    for (const file of workItemFiles) {
-      const current = grouped.get(file.workItemId) || [];
-      current.push(file);
-      grouped.set(file.workItemId, current);
-    }
-
-    return grouped;
-  }, [workItemFiles]);
-
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>(isStaffView ? "my_tasks" : "by_customer");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -187,15 +169,8 @@ export function WorkCycleBoard({
             return false;
           }
 
-          const files = filesByWorkItemId.get(item.id) || [];
           const latestComment = latestUpdateMap.get(item.id)?.comment;
-          const queryMatch = matchesQuery(
-            item,
-            cycle,
-            latestComment,
-            files.map((file) => file.fileName),
-            normalizedQuery,
-          );
+          const queryMatch = matchesQuery(item, cycle, latestComment, normalizedQuery);
 
           if (!queryMatch) {
             return false;
@@ -238,7 +213,6 @@ export function WorkCycleBoard({
     currentUserName,
     customerFilter,
     dueFilter,
-    filesByWorkItemId,
     isStaffView,
     latestUpdateMap,
     normalizedQuery,
@@ -296,13 +270,13 @@ export function WorkCycleBoard({
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <div className="xl:col-span-2">
               <label htmlFor="work-cycle-search" className="text-xs font-medium text-slate-600">
-                ค้นหารอบงาน งานย่อย หรือชื่อไฟล์แนบ
+                ค้นหารอบงาน งานย่อย หรือผู้รับผิดชอบ
               </label>
               <input
                 id="work-cycle-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="ค้นหาจากลูกค้า งาน ผู้รับผิดชอบ blocker หรือชื่อไฟล์"
+                placeholder="ค้นหาจากลูกค้า งาน ผู้รับผิดชอบ หรือ blocker"
                 className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
             </div>
@@ -389,7 +363,7 @@ export function WorkCycleBoard({
       {customerGroups.length === 0 || !selectedGroup ? (
         <EmptyState
           title="ไม่พบงานที่ตรงเงื่อนไข"
-          description="ลองล้าง filters หรือค้นหาด้วยคำอื่น เช่น ชื่อลูกค้า ชื่องาน ผู้รับผิดชอบ หรือชื่อไฟล์แนบ"
+          description="ลองล้าง filters หรือค้นหาด้วยคำอื่น เช่น ชื่อลูกค้า ชื่องาน ผู้รับผิดชอบ หรือ blocker"
         />
       ) : (
         <section className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
@@ -477,7 +451,6 @@ export function WorkCycleBoard({
 
             <div className="mt-5 space-y-3">
               {selectedGroup.filteredItems.map((item) => {
-                const files = filesByWorkItemId.get(item.id) || [];
                 const latestUpdate = latestUpdateMap.get(item.id);
                 const overdue = isOverdue(item.dueDate);
                 const dueSoon = isDueSoon(item.dueDate);
@@ -527,7 +500,6 @@ export function WorkCycleBoard({
                       </div>
                     ) : null}
 
-                    <WorkItemAttachments workItemId={item.id} files={files} canDelete={!isStaffView} />
                   </div>
                 );
               })}

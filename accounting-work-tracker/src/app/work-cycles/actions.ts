@@ -3,13 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { getRecommendedCycleStatus } from "@/lib/phase3/selectors";
 import { getNextAllowedStatuses } from "@/lib/phase3/status-mappers";
-import { getCustomers, getWorkCycles, getNotificationRules, getWorkItemFiles, getWorkItems } from "@/lib/supabase/queries";
+import { getCustomers, getWorkCycles, getNotificationRules, getWorkItems } from "@/lib/supabase/queries";
 import { buildLineNotificationMessage } from "@/lib/phase5/line-message";
 import { dispatchQueuedLineNotifications } from "@/lib/line/dispatcher";
 import { getCurrentSessionUser } from "@/lib/auth/session";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { buildWorkItemFileObjectKey, deleteWorkItemFileFromR2, uploadWorkItemFileToR2 } from "@/lib/r2";
-import { validateWorkItemFile } from "@/lib/work-item-file-validation";
 import { getVisibleWorkScope } from "@/lib/work-items/visibility";
 import type { AppRole } from "@/lib/constants";
 import type { WorkItemStatus } from "@/lib/mock/phase3-data";
@@ -65,17 +63,6 @@ async function resolveUpdatedByDisplayName(rawUpdatedBy?: string) {
 
   const sessionUser = await getCurrentSessionUser();
   return normalizePersonName(sessionUser?.fullName) || normalizePersonName(sessionUser?.email) || rawUpdatedBy?.trim() || "system";
-}
-
-function getWorkItemDetailUrl(workItemId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  const path = `/work-items/${workItemId}`;
-
-  if (!baseUrl) {
-    return path;
-  }
-
-  return `${baseUrl.replace(/\/$/, "")}${path}`;
 }
 
 async function attemptAutomaticLineDispatch(context: {
@@ -294,9 +281,6 @@ export async function updateWorkItemStatusAction(
       updatedBy,
     );
 
-    const allFiles = await getWorkItemFiles();
-    const attachmentCount = allFiles.filter((file) => file.workItemId === workItemId).length;
-
     const message = buildLineNotificationMessage({
       eventType,
       customerName: workCycle?.customerName ?? "-",
@@ -304,8 +288,6 @@ export async function updateWorkItemStatusAction(
       assignedTo: assigneeName,
       blockedReason: nextStatus === "blocked" ? comment : undefined,
       dueDate: updatedWorkItem.dueDate,
-      attachmentCount,
-      workItemDetailUrl: attachmentCount > 0 ? getWorkItemDetailUrl(workItemId) : undefined,
     });
 
     const { error: notificationError } = await supabase.from("line_notifications").insert({
@@ -365,96 +347,3 @@ async function requireVisibleWorkItem(workItemId: string) {
   return { currentUser, workItem } as const;
 }
 
-export async function uploadWorkItemFileAction(
-  _prevState: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const workItemId = String(formData.get("workItemId") || "");
-  const file = formData.get("attachment");
-
-  if (!workItemId || !(file instanceof File) || file.size === 0) {
-    return { error: "กรุณาเลือกไฟล์ที่ต้องการอัปโหลด" };
-  }
-
-  const validation = validateWorkItemFile(file);
-
-  if (!validation.valid) {
-    return { error: validation.error };
-  }
-
-  const access = await requireVisibleWorkItem(workItemId);
-
-  if ("error" in access) {
-    return { error: access.error };
-  }
-
-  const objectKey = buildWorkItemFileObjectKey(workItemId, file.name);
-  const supabase = getSupabaseServerClient();
-
-  try {
-    await uploadWorkItemFileToR2({ objectKey, file });
-
-    const { error } = await supabase.from("work_item_files").insert({
-      work_item_id: workItemId,
-      file_name: file.name,
-      file_size_bytes: file.size,
-      content_type: file.type || "application/octet-stream",
-      storage_provider: "cloudflare_r2",
-      storage_bucket: process.env.R2_BUCKET_NAME,
-      storage_object_key: objectKey,
-      uploaded_by_user_id: access.currentUser.id,
-      uploaded_by_name: access.currentUser.fullName || access.currentUser.email,
-    });
-
-    if (error) {
-      await deleteWorkItemFileFromR2(objectKey);
-      return { error: error.message || "บันทึกข้อมูลไฟล์ไม่สำเร็จ" };
-    }
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "อัปโหลดไฟล์ไม่สำเร็จ" };
-  }
-
-  revalidatePath("/work-cycles");
-  return { success: true, message: "อัปโหลดไฟล์เรียบร้อยแล้ว" };
-}
-
-export async function deleteWorkItemFileAction(
-  _prevState: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const workItemId = String(formData.get("workItemId") || "");
-  const fileId = String(formData.get("fileId") || "");
-
-  if (!workItemId || !fileId) {
-    return { error: "ข้อมูลไฟล์ไม่ครบ" };
-  }
-
-  const access = await requireVisibleWorkItem(workItemId);
-
-  if ("error" in access) {
-    return { error: access.error };
-  }
-
-  const supabase = getSupabaseServerClient();
-  const files = await getWorkItemFiles();
-  const file = files.find((item) => item.id === fileId && item.workItemId === workItemId);
-
-  if (!file) {
-    return { error: "ไม่พบไฟล์ที่ต้องการลบ" };
-  }
-
-  try {
-    const { error } = await supabase.from("work_item_files").delete().eq("id", fileId);
-
-    if (error) {
-      return { error: error.message || "ลบข้อมูลไฟล์ไม่สำเร็จ" };
-    }
-
-    await deleteWorkItemFileFromR2(file.storageObjectKey);
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "ลบไฟล์ไม่สำเร็จ" };
-  }
-
-  revalidatePath("/work-cycles");
-  return { success: true, message: "ลบไฟล์เรียบร้อยแล้ว" };
-}

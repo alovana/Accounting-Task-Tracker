@@ -10,27 +10,19 @@ import { getWorkCycleSummary, getBlockedWorkItems } from "@/lib/phase3/selectors
 import { getStaffWorkloadGroups } from "@/lib/phase4/selectors";
 import { requirePermission } from "@/lib/auth/session";
 import { getVisibleWorkScope } from "@/lib/work-items/visibility";
-import {
-  getCustomers,
-  getWorkCycles,
-  getWorkItemFiles,
-  getWorkItems,
-  getWorkItemUpdates,
-} from "@/lib/supabase/queries";
+import { getCustomers, getWorkCycles, getWorkItems, getWorkItemUpdates } from "@/lib/supabase/queries";
 
 export default async function WorkCyclesPage() {
   const currentUser = await requirePermission("manage_work_cycles");
-  const [workCycles, workItems, workItemUpdates, workItemFiles, customers] = await Promise.all([
+  const [workCycles, workItems, workItemUpdates, customers] = await Promise.all([
     getWorkCycles(),
     getWorkItems(),
     getWorkItemUpdates(),
-    getWorkItemFiles(),
     getCustomers(),
   ]);
   const { isStaffView, visibleWorkCycles, visibleWorkItems, visibleWorkItemIds } =
     getVisibleWorkScope({ currentUser, customers, workCycles, workItems });
   const visibleWorkItemUpdates = workItemUpdates.filter((update) => visibleWorkItemIds.has(update.workItemId));
-  const visibleWorkItemFiles = workItemFiles.filter((file) => visibleWorkItemIds.has(file.workItemId));
   const cycleById = new Map(visibleWorkCycles.map((cycle) => [cycle.id, cycle]));
 
   const summary = getWorkCycleSummary(visibleWorkCycles, visibleWorkItems);
@@ -89,7 +81,6 @@ export default async function WorkCyclesPage() {
               workCycles={visibleWorkCycles}
               workItems={visibleWorkItems}
               workItemUpdates={visibleWorkItemUpdates}
-              workItemFiles={visibleWorkItemFiles}
               isStaffView={isStaffView}
               currentUserId={currentUser.id}
               currentUserName={currentUser.fullName}
