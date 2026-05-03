@@ -144,22 +144,22 @@ function matchesQuery(
 
 function getStatusTone(item: WorkItem) {
   if (item.status === "blocked") {
-    return "from-rose-500 via-pink-500 to-orange-400";
+    return "from-rose-200 via-pink-200 to-orange-100";
   }
 
   if (item.status === "waiting_customer") {
-    return "from-amber-400 via-orange-400 to-yellow-300";
+    return "from-amber-100 via-orange-100 to-yellow-50";
   }
 
   if (isOverdue(item.dueDate)) {
-    return "from-fuchsia-500 via-rose-500 to-orange-400";
+    return "from-fuchsia-200 via-rose-200 to-orange-100";
   }
 
   if (isDueSoon(item.dueDate)) {
-    return "from-cyan-500 via-sky-500 to-blue-500";
+    return "from-cyan-100 via-sky-100 to-blue-100";
   }
 
-  return "from-violet-500 via-indigo-500 to-sky-500";
+  return "from-violet-200 via-fuchsia-100 to-cyan-100";
 }
 
 export function WorkCycleBoard({
@@ -410,36 +410,37 @@ export function WorkCycleBoard({
       ) : (
         <>
           <section className="space-y-4 lg:hidden">
-            <div className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-slate-950 via-indigo-950 to-fuchsia-900 p-5 text-white shadow-[0_24px_70px_-30px_rgba(79,70,229,0.65)]">
-              <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-fuchsia-400/30 blur-2xl" />
-              <div className="absolute -bottom-8 left-6 h-24 w-24 rounded-full bg-cyan-300/20 blur-2xl" />
+            <div className="relative overflow-hidden rounded-[34px] bg-gradient-to-br from-pink-100 via-fuchsia-50 to-cyan-100 p-5 text-slate-800 shadow-[0_24px_70px_-30px_rgba(244,114,182,0.45)] ring-1 ring-white/70">
+              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-pink-300/45 blur-2xl" />
+              <div className="absolute right-10 top-16 h-16 w-16 rounded-full bg-cyan-200/50 blur-xl" />
+              <div className="absolute -bottom-8 left-4 h-24 w-24 rounded-full bg-violet-200/45 blur-2xl" />
               <div className="relative space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/70">Mobile Focus</p>
-                    <h3 className="mt-2 text-2xl font-semibold leading-tight">Monthly Work Board</h3>
-                    <p className="mt-2 text-sm text-white/75">มุมมองมือถือแบบอ่านง่าย โฟกัสเฉพาะงานที่ต้องจัดการตอนนี้</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-fuchsia-500">Bubble Mode</p>
+                    <h3 className="mt-2 text-2xl font-semibold leading-tight text-slate-900">Monthly Work Board</h3>
+                    <p className="mt-2 text-sm text-slate-600">มุมมองมือถือโทนพาสเทล ดูง่าย สดใส และโฟกัสงานที่ต้องทำก่อน</p>
                   </div>
-                  <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-2 text-right backdrop-blur">
-                    <p className="text-[11px] text-white/70">Open tasks</p>
-                    <p className="text-xl font-semibold">{allVisibleItems.length}</p>
+                  <div className="rounded-[24px] border border-white/80 bg-white/70 px-3 py-2 text-right shadow-sm backdrop-blur">
+                    <p className="text-[11px] text-slate-500">Open tasks</p>
+                    <p className="text-xl font-semibold text-slate-900">{allVisibleItems.length}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                  <div className="rounded-2xl bg-white/10 px-3 py-3 backdrop-blur">
-                    <p className="text-white/65">ลูกค้า</p>
-                    <p className="mt-1 text-lg font-semibold text-white">{customerGroups.length}</p>
+                  <div className="rounded-[24px] bg-white/75 px-3 py-3 shadow-sm ring-1 ring-pink-100 backdrop-blur">
+                    <p className="text-slate-500">ลูกค้า</p>
+                    <p className="mt-1 text-lg font-semibold text-fuchsia-600">{customerGroups.length}</p>
                   </div>
-                  <div className="rounded-2xl bg-white/10 px-3 py-3 backdrop-blur">
-                    <p className="text-white/65">เสร็จแล้ว</p>
-                    <p className="mt-1 text-lg font-semibold text-white">
+                  <div className="rounded-[24px] bg-white/75 px-3 py-3 shadow-sm ring-1 ring-emerald-100 backdrop-blur">
+                    <p className="text-slate-500">เสร็จแล้ว</p>
+                    <p className="mt-1 text-lg font-semibold text-emerald-600">
                       {customerGroups.reduce((sum, group) => sum + group.completedCount, 0)}
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-white/10 px-3 py-3 backdrop-blur">
-                    <p className="text-white/65">ติดปัญหา</p>
-                    <p className="mt-1 text-lg font-semibold text-white">
+                  <div className="rounded-[24px] bg-white/75 px-3 py-3 shadow-sm ring-1 ring-rose-100 backdrop-blur">
+                    <p className="text-slate-500">ติดปัญหา</p>
+                    <p className="mt-1 text-lg font-semibold text-rose-500">
                       {customerGroups.reduce((sum, group) => sum + group.blockedCount, 0)}
                     </p>
                   </div>
@@ -447,14 +448,14 @@ export function WorkCycleBoard({
               </div>
             </div>
 
-            <div className="grid gap-3 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
+            <div className="grid gap-3 rounded-[30px] border border-pink-100 bg-gradient-to-br from-white via-pink-50/70 to-cyan-50/70 p-4 shadow-[0_20px_50px_-35px_rgba(236,72,153,0.35)]">
+              <div className="inline-flex rounded-[22px] border border-white/80 bg-white/80 p-1 shadow-sm">
                 <button
                   type="button"
                   onClick={() => setViewMode("my_tasks")}
                   className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition ${
                     viewMode === "my_tasks"
-                      ? "bg-slate-900 text-white shadow-sm"
+                      ? "bg-gradient-to-r from-fuchsia-400 to-violet-400 text-white shadow-sm"
                       : "text-slate-600 hover:bg-white"
                   }`}
                 >
@@ -465,7 +466,7 @@ export function WorkCycleBoard({
                   onClick={() => setViewMode("by_customer")}
                   className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition ${
                     viewMode === "by_customer"
-                      ? "bg-slate-900 text-white shadow-sm"
+                      ? "bg-gradient-to-r from-fuchsia-400 to-violet-400 text-white shadow-sm"
                       : "text-slate-600 hover:bg-white"
                   }`}
                 >
@@ -478,8 +479,8 @@ export function WorkCycleBoard({
                 onClick={() => setShowCompletedItems((value) => !value)}
                 className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
                   showCompletedItems
-                    ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-                    : "bg-slate-100 text-slate-700 ring-1 ring-slate-200"
+                    ? "bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 ring-1 ring-emerald-200"
+                    : "bg-gradient-to-r from-pink-50 to-violet-50 text-slate-700 ring-1 ring-pink-100"
                 }`}
               >
                 {showCompletedItems ? "กำลังแสดงงานที่เสร็จแล้ว, กดเพื่อซ่อน" : "ซ่อนงานที่เสร็จแล้วอยู่, กดเพื่อแสดงทั้งหมด"}
@@ -489,7 +490,7 @@ export function WorkCycleBoard({
                 <select
                   value={customerFilter}
                   onChange={(event) => setCustomerFilter(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                  className="w-full rounded-[22px] border border-white/80 bg-white/85 px-4 py-3 text-sm text-slate-700 outline-none shadow-sm focus:border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-100"
                 >
                   <option value="all">เลือกลูกค้าทั้งหมด</option>
                   {customerOptions.map((option) => (
@@ -503,7 +504,7 @@ export function WorkCycleBoard({
                   <select
                     value={statusFilter}
                     onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    className="w-full rounded-[22px] border border-white/80 bg-white/85 px-4 py-3 text-sm text-slate-700 outline-none shadow-sm focus:border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-100"
                   >
                     {statusFilterOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -515,7 +516,7 @@ export function WorkCycleBoard({
                   <select
                     value={dueFilter}
                     onChange={(event) => setDueFilter(event.target.value as DueFilter)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    className="w-full rounded-[22px] border border-white/80 bg-white/85 px-4 py-3 text-sm text-slate-700 outline-none shadow-sm focus:border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-100"
                   >
                     <option value="all">กำหนดส่งทั้งหมด</option>
                     <option value="overdue">เลยกำหนด</option>
@@ -537,17 +538,15 @@ export function WorkCycleBoard({
                     onClick={() => setSelectedCycleId(group.cycle.id)}
                     className={`min-w-[240px] rounded-[26px] p-[1px] text-left transition ${
                       isSelected
-                        ? "bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-400 shadow-[0_20px_50px_-28px_rgba(168,85,247,0.8)]"
-                        : "bg-slate-200"
+                        ? "bg-gradient-to-r from-pink-300 via-fuchsia-300 to-cyan-200 shadow-[0_20px_50px_-28px_rgba(244,114,182,0.55)]"
+                        : "bg-gradient-to-r from-pink-100 via-violet-100 to-cyan-100"
                     }`}
                   >
-                    <div className={`rounded-[25px] px-4 py-4 ${isSelected ? "bg-slate-950 text-white" : "bg-white text-slate-900"}`}>
+                    <div className="rounded-[25px] bg-white/90 px-4 py-4 text-slate-900 backdrop-blur">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-base font-semibold">{group.cycle.customerName}</p>
-                          <p className={`mt-1 text-xs ${isSelected ? "text-white/70" : "text-slate-500"}`}>
-                            รอบงาน {group.cycle.periodMonth}/{group.cycle.periodYear}
-                          </p>
+                          <p className="mt-1 text-xs text-slate-500">รอบงาน {group.cycle.periodMonth}/{group.cycle.periodYear}</p>
                         </div>
                         <div className="shrink-0">
                           <WorkCycleStatusBadge status={getRecommendedCycleStatus(group.filteredItems)} />
@@ -555,15 +554,15 @@ export function WorkCycleBoard({
                       </div>
 
                       <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-                        <div className={`rounded-2xl px-3 py-2 ${isSelected ? "bg-white/10 text-white" : "bg-slate-100 text-slate-700"}`}>
+                        <div className="rounded-[20px] bg-pink-50 px-3 py-2 text-fuchsia-700">
                           <p>เปิดอยู่</p>
                           <p className="mt-1 text-base font-semibold">{group.filteredItems.length}</p>
                         </div>
-                        <div className={`rounded-2xl px-3 py-2 ${isSelected ? "bg-white/10 text-white" : "bg-slate-100 text-slate-700"}`}>
+                        <div className="rounded-[20px] bg-emerald-50 px-3 py-2 text-emerald-700">
                           <p>เสร็จแล้ว</p>
                           <p className="mt-1 text-base font-semibold">{group.completedCount}</p>
                         </div>
-                        <div className={`rounded-2xl px-3 py-2 ${isSelected ? "bg-white/10 text-white" : "bg-slate-100 text-slate-700"}`}>
+                        <div className="rounded-[20px] bg-rose-50 px-3 py-2 text-rose-600">
                           <p>ติดปัญหา</p>
                           <p className="mt-1 text-base font-semibold">{group.blockedCount}</p>
                         </div>
@@ -575,7 +574,7 @@ export function WorkCycleBoard({
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-[30px] border border-violet-100 bg-gradient-to-r from-white via-violet-50 to-pink-50 p-4 shadow-[0_18px_45px_-30px_rgba(192,132,252,0.4)]">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h4 className="text-lg font-semibold text-slate-950">{selectedGroup.cycle.customerName}</h4>
@@ -583,7 +582,9 @@ export function WorkCycleBoard({
                       รอบงาน {selectedGroup.cycle.periodMonth}/{selectedGroup.cycle.periodYear}
                     </p>
                   </div>
-                  <StatusBadge label={`${selectedGroup.filteredItems.length} open`} tone="slate" />
+                  <div className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-fuchsia-700 shadow-sm ring-1 ring-fuchsia-100">
+                    {selectedGroup.filteredItems.length} open
+                  </div>
                 </div>
               </div>
 
@@ -596,10 +597,10 @@ export function WorkCycleBoard({
                 return (
                   <div
                     key={item.id}
-                    className="overflow-hidden rounded-[30px] bg-white shadow-[0_18px_50px_-30px_rgba(15,23,42,0.32)] ring-1 ring-slate-200"
+                    className="overflow-hidden rounded-[32px] bg-white/90 shadow-[0_22px_55px_-32px_rgba(236,72,153,0.35)] ring-1 ring-pink-100"
                   >
                     <div className={`bg-gradient-to-r ${getStatusTone(item)} p-[1px]`}>
-                      <div className="rounded-[29px] bg-white p-4">
+                      <div className="rounded-[31px] bg-white/95 p-4 backdrop-blur">
                         <button
                           type="button"
                           onClick={() => setExpandedMobileItemId((value) => (value === item.id ? null : item.id))}
@@ -608,7 +609,7 @@ export function WorkCycleBoard({
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="truncate text-base font-semibold text-slate-950">{item.title}</p>
+                                <p className="truncate text-base font-semibold text-slate-900">{item.title}</p>
                                 {overdue ? <StatusBadge label="overdue" tone="amber" /> : null}
                                 {!overdue && dueSoon ? <StatusBadge label="due soon" tone="green" /> : null}
                               </div>
@@ -617,16 +618,21 @@ export function WorkCycleBoard({
                             </div>
                             <div className="flex flex-col items-end gap-2">
                               <WorkItemStatusBadge status={item.status} />
-                              <span className="text-xs font-medium text-slate-400">{isExpanded ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}</span>
+                              <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-medium text-fuchsia-500 ring-1 ring-fuchsia-100">
+                                {isExpanded ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
+                              </span>
                             </div>
                           </div>
                         </button>
 
                         {isExpanded ? (
-                          <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                          <div className="mt-4 space-y-3 border-t border-pink-100 pt-4">
                             <div className="flex flex-wrap gap-2 text-xs text-slate-500">
                               {getNextAllowedStatuses(item.status).map((status) => (
-                                <span key={status} className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                                <span
+                                  key={status}
+                                  className="rounded-full bg-gradient-to-r from-pink-50 to-violet-50 px-3 py-1 text-fuchsia-700 ring-1 ring-pink-100"
+                                >
                                   next: {getWorkItemStatusLabel(status)}
                                 </span>
                               ))}
@@ -641,19 +647,19 @@ export function WorkCycleBoard({
                             />
 
                             {item.note ? (
-                              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                              <div className="rounded-[22px] bg-gradient-to-r from-slate-50 to-pink-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-100">
                                 หมายเหตุ: {item.note}
                               </div>
                             ) : null}
 
                             {latestUpdate ? (
-                              <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-800 ring-1 ring-blue-100">
+                              <div className="rounded-[22px] bg-gradient-to-r from-cyan-50 to-sky-50 px-4 py-3 text-sm text-sky-800 ring-1 ring-cyan-100">
                                 อัปเดตล่าสุด: {latestUpdate.comment} ({latestUpdate.updatedBy})
                               </div>
                             ) : null}
 
                             {item.blockedReason ? (
-                              <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-100">
+                              <div className="rounded-[22px] bg-gradient-to-r from-rose-50 to-pink-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-100">
                                 blocker: {item.blockedReason}
                               </div>
                             ) : null}
