@@ -27,6 +27,7 @@ type CustomerGroup = {
   cycle: WorkCycle;
   filteredItems: WorkItem[];
   allItems: WorkItem[];
+  visibleOpenItems: WorkItem[];
   matchingMyItems: number;
   completedCount: number;
   blockedCount: number;
@@ -89,6 +90,10 @@ function isMyTask(item: WorkItem, currentUserId: string | undefined, currentUser
   }
 
   return item.assignedTo === currentUserName;
+}
+
+function isCompletedStatus(status: WorkItemStatus) {
+  return status === "completed" || status === "skipped";
 }
 
 function matchesStatusFilter(item: WorkItem, statusFilter: StatusFilter) {
@@ -154,6 +159,7 @@ export function WorkCycleBoard({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dueFilter, setDueFilter] = useState<DueFilter>("all");
   const [customerFilter, setCustomerFilter] = useState("all");
+  const [showCompletedItems, setShowCompletedItems] = useState(false);
   const normalizedQuery = query.trim().toLowerCase();
 
   const customerOptions = useMemo(() => {
@@ -164,7 +170,8 @@ export function WorkCycleBoard({
     return workCycles
       .map((cycle) => {
         const allItems = workItems.filter((item) => item.workCycleId === cycle.id);
-        const filteredItems = allItems.filter((item) => {
+        const visibleOpenItems = allItems.filter((item) => showCompletedItems || !isCompletedStatus(item.status));
+        const filteredItems = visibleOpenItems.filter((item) => {
           if (customerFilter !== "all" && cycle.id !== customerFilter) {
             return false;
           }
@@ -199,7 +206,8 @@ export function WorkCycleBoard({
           cycle,
           filteredItems,
           allItems,
-          matchingMyItems: allItems.filter((item) => isMyTask(item, currentUserId, currentUserName, isStaffView)).length,
+          visibleOpenItems,
+          matchingMyItems: visibleOpenItems.filter((item) => isMyTask(item, currentUserId, currentUserName, isStaffView)).length,
           completedCount: allItems.filter((item) => item.status === "completed" || item.status === "skipped").length,
           blockedCount: allItems.filter((item) => item.status === "blocked").length,
           waitingCount: allItems.filter((item) => item.status === "waiting_customer").length,
@@ -216,6 +224,7 @@ export function WorkCycleBoard({
     isStaffView,
     latestUpdateMap,
     normalizedQuery,
+    showCompletedItems,
     statusFilter,
     viewMode,
     workCycles,
@@ -337,6 +346,17 @@ export function WorkCycleBoard({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <button
+              type="button"
+              onClick={() => setShowCompletedItems((value) => !value)}
+              className={`rounded-full border px-3 py-1.5 transition ${
+                showCompletedItems
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              {showCompletedItems ? "ซ่อนงานที่เสร็จแล้ว" : "แสดงงานที่เสร็จแล้ว"}
+            </button>
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">ลูกค้าที่แสดง {customerGroups.length} ราย</span>
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">งานที่ตรงเงื่อนไข {allVisibleItems.length} รายการ</span>
             {viewMode === "my_tasks" ? (
@@ -351,6 +371,7 @@ export function WorkCycleBoard({
                 setCustomerFilter("all");
                 setStatusFilter("all");
                 setDueFilter("all");
+                setShowCompletedItems(false);
               }}
               className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-600 transition hover:bg-slate-100"
             >
@@ -396,7 +417,7 @@ export function WorkCycleBoard({
 
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                     <div className={`rounded-2xl border px-3 py-2 ${isSelected ? "border-white/10 bg-white/10 text-white" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
-                      งาน {group.filteredItems.length}/{group.allItems.length}
+                      งาน {group.filteredItems.length}/{group.visibleOpenItems.length}
                     </div>
                     <div className={`rounded-2xl border px-3 py-2 ${isSelected ? "border-white/10 bg-white/10 text-white" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
                       เสร็จ {group.completedCount}
@@ -426,7 +447,7 @@ export function WorkCycleBoard({
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-xl font-semibold text-slate-950">{selectedGroup.cycle.customerName}</h3>
                     <WorkCycleStatusBadge status={getRecommendedCycleStatus(selectedGroup.filteredItems)} />
-                    <StatusBadge label={`${selectedGroup.filteredItems.length}/${selectedGroup.allItems.length} tasks`} tone="slate" />
+                    <StatusBadge label={`${selectedGroup.filteredItems.length}/${selectedGroup.visibleOpenItems.length} tasks`} tone="slate" />
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
                     รอบงาน {selectedGroup.cycle.periodMonth}/{selectedGroup.cycle.periodYear} · generated {selectedGroup.cycle.generatedAt}
