@@ -30,20 +30,25 @@ function formatThaiBuddhistDate(date: Date) {
 }
 
 export function SidebarDigitalClock() {
-  const [now, setNow] = useState<Date>(getNow);
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    const initialTimer = window.setTimeout(() => {
+      setNow(getNow());
+    }, 0);
+
     const timer = window.setInterval(() => {
       setNow(getNow());
     }, 1000);
 
     return () => {
+      window.clearTimeout(initialTimer);
       window.clearInterval(timer);
     };
   }, []);
 
-  const time = useMemo(() => formatTime(now), [now]);
-  const date = useMemo(() => formatThaiBuddhistDate(now), [now]);
+  const time = useMemo(() => (now ? formatTime(now) : "--:--:--"), [now]);
+  const date = useMemo(() => (now ? formatThaiBuddhistDate(now) : "กำลังโหลดวันที่"), [now]);
 
   return (
     <div className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-7 text-white shadow-[0_30px_70px_-35px_rgba(15,23,42,0.65)]">
