@@ -3,20 +3,20 @@ import type { WorkCycle, WorkItem, WorkItemStatus, WorkItemUpdate } from "@/lib/
 export function getWorkCycleSummary(workCycles: WorkCycle[], workItems: WorkItem[]) {
   return [
     {
-      label: "รอบงานทั้งหมด",
+      label: "ลูกค้า",
       value: workCycles.length.toString(),
     },
     {
-      label: "งานที่ติดปัญหา",
-      value: workItems.filter((item) => item.status === "blocked").length.toString(),
+      label: "งานค้าง",
+      value: workItems.filter((item) => item.status !== "completed" && item.status !== "skipped").length.toString(),
     },
     {
       label: "รอลูกค้า",
       value: workItems.filter((item) => item.status === "waiting_customer").length.toString(),
     },
     {
-      label: "เสร็จแล้ว",
-      value: workItems.filter((item) => item.status === "completed").length.toString(),
+      label: "ติดปัญหา",
+      value: workItems.filter((item) => item.status === "blocked").length.toString(),
     },
   ];
 }
@@ -34,9 +34,7 @@ export function getUpdatesForDisplay(workItemUpdates: WorkItemUpdate[]) {
 }
 
 export function getLatestWorkItemUpdateMap(workItemUpdates: WorkItemUpdate[]) {
-  return new Map(
-    getUpdatesForDisplay(workItemUpdates).map((update) => [update.workItemId, update]),
-  );
+  return new Map(getUpdatesForDisplay(workItemUpdates).map((update) => [update.workItemId, update]));
 }
 
 export function getRecommendedCycleStatus(workItems: WorkItem[]): WorkCycle["status"] {

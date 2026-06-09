@@ -1,57 +1,36 @@
 import { AppShell } from "@/components/app-shell";
-import { ChecklistManagement } from "@/components/checklists/checklist-management";
-import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { requirePermission } from "@/lib/auth/session";
-import { getBusinessTypes, getChecklistTemplateItems, getChecklistTemplates } from "@/lib/supabase/queries";
+import { monthlyAccountingWorkflow } from "@/lib/monthly-workflow";
 
 export default async function ChecklistsPage() {
   await requirePermission("manage_checklists");
-  const [businessTypes, checklistTemplates, checklistTemplateItems] = await Promise.all([
-    getBusinessTypes(),
-    getChecklistTemplates(),
-    getChecklistTemplateItems(),
-  ]);
-
-  const isConnectedMode = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY,
-  );
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-5 sm:px-6 lg:py-8">
         <PageHeader
-          title="Checklist Templates"
-          description="แม่แบบงานหลักของแต่ละประเภทธุรกิจสำหรับใช้ต่อยอดเป็นงานรายเดือน"
-          badge={isConnectedMode ? "Supabase connected mode" : "Mock data mode"}
+          title="Checklist"
+          description="7 ขั้นตอนหลักของงานบัญชีประจำเดือน"
+          badge="Standard workflow"
+          hideDescription={false}
         />
 
-        <SectionCard
-          title="จัดการ Template และ Checklist Items"
-          description="ผู้จัดการและแอดมินสามารถเพิ่ม แก้ไข ปิดใช้งาน และลบ template พร้อมรายการย่อยได้จากหน้านี้"
-        >
-          {checklistTemplates.length === 0 ? (
-            <div className="space-y-4">
-              <EmptyState
-                title="ยังไม่มี checklist template"
-                description="สร้าง template แรกได้จากฟอร์มด้านล่าง"
-              />
-              <ChecklistManagement
-                businessTypes={businessTypes}
-                checklistTemplates={checklistTemplates}
-                checklistTemplateItems={checklistTemplateItems}
-                isConnectedMode={isConnectedMode}
-              />
-            </div>
-          ) : (
-            <ChecklistManagement
-              businessTypes={businessTypes}
-              checklistTemplates={checklistTemplates}
-              checklistTemplateItems={checklistTemplateItems}
-              isConnectedMode={isConnectedMode}
-            />
-          )}
+        <SectionCard title="Monthly Accounting Workflow">
+          <div className="space-y-3">
+            {monthlyAccountingWorkflow.map((item, index) => (
+              <div key={item.title} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-sm font-bold text-slate-950">
+                  {index + 1}
+                </div>
+                <div>
+                  <p className="font-bold text-slate-950">{item.title}</p>
+                  <p className="mt-1 text-sm text-slate-600">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </SectionCard>
       </main>
     </AppShell>

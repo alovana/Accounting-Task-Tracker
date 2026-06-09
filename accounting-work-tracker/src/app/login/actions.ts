@@ -2,7 +2,8 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { sessionCookieNames } from "@/lib/auth/session";
+import { findDemoUserByCredentials } from "@/lib/auth/demo-users";
+import { demoSession, sessionCookieNames } from "@/lib/auth/session";
 import { getSupabaseAuthClient, getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type LoginActionState = {
@@ -16,6 +17,23 @@ const sessionCookieOptions = {
   path: "/",
   maxAge: 60 * 60 * 24 * 7,
 };
+
+async function signInWithDemoUser(email: string, password: string) {
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+
+  const demoUser = findDemoUserByCredentials(email, password);
+
+  if (!demoUser) {
+    return false;
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(sessionCookieNames.accessToken, `${demoSession.accessPrefix}${demoUser.email}`, sessionCookieOptions);
+  cookieStore.set(sessionCookieNames.refreshToken, "demo", sessionCookieOptions);
+  return true;
+}
 
 export async function loginAction(
   _prevState: LoginActionState,
@@ -33,7 +51,11 @@ export async function loginAction(
     const { data, error } = await authClient.auth.signInWithPassword({ email, password });
 
     if (error || !data.session || !data.user) {
-      return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีของคุณยังไม่ได้รับสิทธิ์เข้าใช้งาน" };
+      if (await signInWithDemoUser(email, password)) {
+        redirect("/dashboard");
+      }
+
+      return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
     }
 
     const supabase = getSupabaseServerClient();
@@ -45,7 +67,7 @@ export async function loginAction(
 
     if (profileError || !profile || !profile.active) {
       await authClient.auth.signOut();
-      return { error: "บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าใช้งานระบบ กรุณาติดต่อผู้ดูแลระบบ" };
+      return { error: "บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าใช้งานระบบ" };
     }
 
     const cookieStore = await cookies();
@@ -53,7 +75,11 @@ export async function loginAction(
     cookieStore.set(sessionCookieNames.refreshToken, data.session.refresh_token, sessionCookieOptions);
   } catch (error) {
     console.error("Failed to sign in with Supabase Auth", error);
-    return { error: "ไม่สามารถเข้าสู่ระบบได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+    if (await signInWithDemoUser(email, password)) {
+      redirect("/dashboard");
+    }
+
+    return { error: "ไม่สามารถเข้าสู่ระบบได้ในขณะนี้" };
   }
 
   redirect("/dashboard");
@@ -64,7 +90,7 @@ export async function logoutAction() {
   const accessToken = cookieStore.get(sessionCookieNames.accessToken)?.value;
   const refreshToken = cookieStore.get(sessionCookieNames.refreshToken)?.value;
 
-  if (accessToken && refreshToken) {
+  if (accessToken && refreshToken && refreshToken !== "demo") {
     try {
       const authClient = getSupabaseAuthClient();
       await authClient.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });

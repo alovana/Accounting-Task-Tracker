@@ -1,306 +1,175 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
 import { SummaryCard } from "@/components/phase2/summary-card";
-import { StatusUpdateList } from "@/components/phase3/status-update-list";
-import { AttentionList } from "@/components/phase4/attention-list";
-import { KpiGrid } from "@/components/phase4/kpi-grid";
-import { StaffDashboardCard } from "@/components/phase4/staff-dashboard-card";
-import { StaffPerformanceTable } from "@/components/phase4/staff-performance-table";
-import { StaffWorkloadGroups } from "@/components/phase4/staff-workload-groups";
-import { WorkCycleHealthList } from "@/components/phase4/work-cycle-health-list";
-import { WorkloadStatusList } from "@/components/phase4/workload-status-list";
-import { canAccess } from "@/lib/auth/permissions";
+import { WorkItemStatusBadge } from "@/components/phase3/work-item-status-badge";
 import { requirePermission } from "@/lib/auth/session";
-import {
-  getAttentionItems,
-  getDashboardKpis,
-  getRecentItems,
-  getStaffDashboardSummary,
-  getStaffSummaries,
-  getStaffWorkloadGroups,
-  getWorkCycleHealth,
-  getWorkloadStatusBreakdown,
-} from "@/lib/phase4/selectors";
-import {
-  getCustomers,
-  getWorkCycles,
-  getWorkItems,
-  getWorkItemUpdates,
-} from "@/lib/supabase/queries";
+import { getCustomers, getWorkCycles, getWorkItems } from "@/lib/supabase/queries";
 import { getVisibleWorkScope } from "@/lib/work-items/visibility";
+import type { WorkItem } from "@/lib/mock/phase3-data";
+
+function isOpen(item: WorkItem) {
+  return item.status !== "completed" && item.status !== "skipped";
+}
+
+function getStaffRows(workItems: WorkItem[]) {
+  const staffMap = new Map<string, WorkItem[]>();
+
+  for (const item of workItems) {
+    const key = item.assignedTo || "ไม่ระบุผู้รับผิดชอบ";
+    staffMap.set(key, [...(staffMap.get(key) ?? []), item]);
+  }
+
+  return Array.from(staffMap.entries())
+    .map(([staffName, items]) => ({
+      staffName,
+      total: items.length,
+      open: items.filter(isOpen).length,
+      completed: items.filter((item) => item.status === "completed").length,
+      waiting: items.filter((item) => item.status === "waiting_customer").length,
+      blocked: items.filter((item) => item.status === "blocked").length,
+    }))
+    .sort((a, b) => b.open - a.open || b.blocked - a.blocked);
+}
+
+function getCustomerRows(workItems: WorkItem[], cycleNameMap: Map<string, string>) {
+  const cycleMap = new Map<string, WorkItem[]>();
+
+  for (const item of workItems) {
+    cycleMap.set(item.workCycleId, [...(cycleMap.get(item.workCycleId) ?? []), item]);
+  }
+
+  return Array.from(cycleMap.entries())
+    .map(([cycleId, items]) => ({
+      cycleId,
+      customerName: cycleNameMap.get(cycleId) ?? "-",
+      total: items.length,
+      completed: items.filter((item) => item.status === "completed").length,
+      open: items.filter(isOpen).length,
+      waiting: items.filter((item) => item.status === "waiting_customer").length,
+      blocked: items.filter((item) => item.status === "blocked").length,
+    }))
+    .sort((a, b) => b.blocked - a.blocked || b.open - a.open);
+}
 
 export default async function DashboardPage() {
   const user = await requirePermission("view_dashboard");
-  const [customers, workCycles, workItems, workItemUpdates] = await Promise.all([
+  const [customers, workCycles, workItems] = await Promise.all([
     getCustomers(),
     getWorkCycles(),
     getWorkItems(),
-    getWorkItemUpdates(),
   ]);
 
-  const isManagerView = canAccess(user.role, "view_reports");
-  const isStaffView = user.role === "staff";
-  const isAdminView = user.role === "admin";
-
-  const { visibleCustomers, visibleWorkCycles, visibleWorkItems, visibleWorkItemIds, isManagerView: scopedManagerView } = getVisibleWorkScope({
+  const { visibleWorkCycles, visibleWorkItems } = getVisibleWorkScope({
     currentUser: user,
     customers,
     workCycles,
     workItems,
   });
-  const cycleById = new Map(visibleWorkCycles.map((cycle) => [cycle.id, cycle]));
-  const relevantUpdates = isStaffView
-    ? workItemUpdates.filter((update) => visibleWorkItemIds.has(update.workItemId))
-    : workItemUpdates;
-
-  const dashboardWorkCycles = isAdminView ? workCycles : visibleWorkCycles;
-  const dashboardWorkItems = isAdminView ? workItems : visibleWorkItems;
-
-  const kpis = getDashboardKpis(dashboardWorkCycles, dashboardWorkItems);
-  const staffRows = getStaffSummaries(dashboardWorkItems);
-  const cycleHealth = getWorkCycleHealth(dashboardWorkCycles);
-  const staffWorkloadGroups = getStaffWorkloadGroups(visibleWorkItems, cycleById);
-  const attentionItems = getAttentionItems(dashboardWorkItems);
-  const recentItems = getRecentItems(dashboardWorkItems);
-  const workloadStatus = getWorkloadStatusBreakdown(dashboardWorkItems);
-  const staffSummary = getStaffDashboardSummary(visibleWorkItems, visibleCustomers, user.id, user.fullName);
-  const myAttentionItems = getAttentionItems(visibleWorkItems);
-  const myRecentItems = getRecentItems(visibleWorkItems);
+  const cycleNameMap = new Map(visibleWorkCycles.map((cycle) => [cycle.id, cycle.customerName]));
+  const openItems = visibleWorkItems.filter(isOpen);
+  const waitingItems = visibleWorkItems.filter((item) => item.status === "waiting_customer");
+  const blockedItems = visibleWorkItems.filter((item) => item.status === "blocked");
+  const completedItems = visibleWorkItems.filter((item) => item.status === "completed");
+  const staffRows = getStaffRows(visibleWorkItems);
+  const customerRows = getCustomerRows(visibleWorkItems, cycleNameMap);
+  const attentionItems = [...blockedItems, ...waitingItems].slice(0, 8);
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-5 sm:px-6 lg:py-8">
         <PageHeader
-          title={isManagerView ? "Dashboard Overview" : isStaffView ? "My Dashboard" : "Admin Control Center"}
-          description={
-            isManagerView
-              ? "ภาพรวมปฏิบัติการของทีมและบริษัทสำหรับ manager พร้อมมุมมองที่อ่านง่ายขึ้นแบบ clean SaaS"
-              : isStaffView
-                ? "แสดงเฉพาะงาน ลูกค้า และอัปเดตที่เกี่ยวข้องกับคุณในมุมมองที่โฟกัสขึ้น"
-                : "สรุปสิ่งที่ผู้ดูแลระบบควรดูแลด้านสิทธิ์ การตั้งค่า และความพร้อมของระบบ โดยแยกจากงานติดตามปฏิบัติการ"
-          }
-          badge={process.env.NEXT_PUBLIC_SUPABASE_URL ? "Supabase connected mode" : "Mock dashboard mode"}
-          compact
+          title={user.role === "staff" ? "My Dashboard" : "Manager Dashboard"}
+          description="ดูว่าใครทำถึงไหน งานไหนค้าง และลูกค้าไหนติดปัญหา"
+          badge="Local workflow"
+          hideDescription={false}
         />
 
-        {isAdminView ? (
-          <>
-            <SectionCard title="Team Performance">
-              {staffRows.length === 0 ? (
-                <EmptyState
-                  title="ยังไม่มีข้อมูลงานของทีม"
-                  description="เมื่อมี work items แล้ว ระบบจะแสดง performance summary ในส่วนนี้"
-                />
-              ) : (
-                <StaffPerformanceTable rows={staffRows} />
-              )}
-            </SectionCard>
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <SummaryCard label="งานทั้งหมด" value={visibleWorkItems.length.toString()} />
+          <SummaryCard label="งานค้าง" value={openItems.length.toString()} />
+          <SummaryCard label="รอลูกค้า" value={waitingItems.length.toString()} />
+          <SummaryCard label="ติดปัญหา" value={blockedItems.length.toString()} tone={blockedItems.length > 0 ? "accent" : "default"} />
+        </section>
 
-            <KpiGrid items={kpis} />
-
-            <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <SectionCard
-                title="Admin Focus"
-                description="ผู้ดูแลระบบจะถูกพาไปยังงานกำหนดค่าและการควบคุมระบบแทนการติดตามงานรายเดือนของบริษัท"
-              >
-                <ul className="space-y-3 text-sm leading-6 text-slate-700">
-                  <li>- ดูแลบัญชีผู้ใช้และ role assignments ในหน้า Settings</li>
-                  <li>- จัดการข้อมูลตั้งต้น เช่น ลูกค้าและ checklist templates</li>
-                  <li>- ตรวจ readiness, notification configuration และ deployment prep</li>
-                  <li>- มอบหมายการติดตาม execution และ work monitoring ให้ manager</li>
-                </ul>
-              </SectionCard>
-
-              <SectionCard
-                title="Operational Views Moved to Manager"
-                description="ลดความสับสนของสิทธิ์โดยซ่อนมุมมอง operational สำหรับ admin"
-              >
-                <div className="space-y-3 text-sm leading-6 text-slate-700">
-                  <p>หน้า Monthly Work และ Team Reports จะไม่แสดงในเมนูของ admin แล้ว</p>
-                  <p>หากต้องทำงานด้านระบบต่อ ให้ใช้หน้าโปรไฟล์ / ตั้งค่า เพื่อจัดการรหัสผ่าน ผู้ใช้ notifications และ readiness</p>
+        <SectionCard title="งานที่ต้องดูตอนนี้">
+          {attentionItems.length === 0 ? (
+            <EmptyState title="ยังไม่มีงานติดปัญหา" description="ตอนนี้ไม่มีงานที่ติดปัญหาหรือรอลูกค้า" />
+          ) : (
+            <div className="space-y-3">
+              {attentionItems.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-slate-950">{cycleNameMap.get(item.workCycleId) ?? "-"}</p>
+                      <p className="mt-1 text-sm text-slate-700">{item.title}</p>
+                      <p className="mt-1 text-sm text-slate-500">ผู้รับผิดชอบ: {item.assignedTo}</p>
+                    </div>
+                    <WorkItemStatusBadge status={item.status} />
+                  </div>
+                  {item.blockedReason ? <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{item.blockedReason}</p> : null}
+                  {item.note ? <p className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">{item.note}</p> : null}
                 </div>
-              </SectionCard>
-            </section>
-          </>
-        ) : isManagerView ? (
-          <>
-            <KpiGrid items={kpis} />
+              ))}
+            </div>
+          )}
+        </SectionCard>
 
-            <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-              <SectionCard
-                title="Staff Dashboard Snapshot"
-                description="ตัวอย่างมุมมองของพนักงานเพื่อให้หัวหน้าประเมินภาระงานที่ทีมเห็นจริงในแต่ละวัน"
-              >
-                <StaffDashboardCard
-                  myOpenItems={staffSummary.myOpenItems}
-                  myBlockedItems={staffSummary.myBlockedItems}
-                  myWaitingCustomerItems={staffSummary.myWaitingCustomerItems}
-                  myCustomers={staffSummary.myCustomers}
-                />
-              </SectionCard>
-
-              <div className="space-y-6">
-                <SectionCard
-                  title="Work Cycle Health"
-                  description="ดูจำนวนรอบงานตามสถานะ เพื่อประเมินสุขภาพการดำเนินงานแบบเร็ว ๆ"
-                >
-                  <WorkCycleHealthList items={cycleHealth} />
-                </SectionCard>
-
-                <SectionCard
-                  title="Workload by Status"
-                  description="แยกงานตามสถานะจริง เพื่อช่วยจัดลำดับการติดตามในแต่ละวัน"
-                >
-                  <WorkloadStatusList items={workloadStatus} />
-                </SectionCard>
-              </div>
-            </section>
-
-            {!isAdminView && scopedManagerView ? (
-              <SectionCard
-                title="Manager Team Queue"
-                description="รวมงานตามผู้รับผิดชอบแบบพับได้ เพื่อเริ่มจากภาพรวมแล้วค่อย drill down เป็นรายคน"
-              >
-                <StaffWorkloadGroups
-                  groups={staffWorkloadGroups}
-                  emptyTitle="ยังไม่มีคิวงานของทีม"
-                  emptyDescription="เมื่อมี work items แล้ว ระบบจะแสดงการ์ดแยกตามผู้รับผิดชอบพร้อมสถานะสำคัญ"
-                  defaultOpenCount={3}
-                />
-              </SectionCard>
-            ) : null}
-
-            <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-              <SectionCard
-                title="งานที่ต้องติดตาม"
-                description="รวมงาน blocked และ waiting customer เพื่อให้ผู้จัดการเห็นปัญหาได้เร็วขึ้น"
-              >
-                {attentionItems.length === 0 ? (
-                  <EmptyState
-                    title="ไม่มีงานที่ต้องติดตามเป็นพิเศษ"
-                    description="ตอนนี้ยังไม่มี blocked หรือ waiting customer items"
-                  />
-                ) : (
-                  <AttentionList items={attentionItems} />
-                )}
-              </SectionCard>
-
-              <SectionCard
-                title="งานใกล้ถึงกำหนด"
-                description="ใช้ติดตามงานที่ควรเร่งดำเนินการในช่วงสั้น ๆ"
-              >
-                {recentItems.length === 0 ? (
-                  <EmptyState
-                    title="ยังไม่มีงานใกล้ถึงกำหนด"
-                    description="เมื่อมี due date ระบบจะแสดงรายการในส่วนนี้"
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {recentItems.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="font-medium text-slate-900">{item.title}</p>
-                        <p className="mt-1 text-sm text-slate-600">ผู้รับผิดชอบ: {item.assignedTo}</p>
-                        <p className="mt-1 text-sm text-slate-500">กำหนดส่ง: {item.dueDate}</p>
-                      </div>
-                    ))}
+        <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+          <SectionCard title="สรุปตามพนักงาน">
+            <div className="space-y-3">
+              {staffRows.map((row) => (
+                <div key={row.staffName} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-slate-950">{row.staffName}</p>
+                      <p className="mt-1 text-sm text-slate-500">เสร็จ {row.completed}/{row.total}</p>
+                    </div>
+                    <p className="text-lg font-bold text-slate-950">{row.open}</p>
                   </div>
-                )}
-              </SectionCard>
-            </section>
-          </>
-        ) : isStaffView ? (
-          <>
-            <SectionCard
-              title="My Work Snapshot"
-              description="สรุปงานและลูกค้าที่คุณต้องรับผิดชอบตอนนี้ ในมุมมองที่เรียบและโฟกัสมากขึ้น"
-            >
-              <StaffDashboardCard
-                myOpenItems={staffSummary.myOpenItems}
-                myBlockedItems={staffSummary.myBlockedItems}
-                myWaitingCustomerItems={staffSummary.myWaitingCustomerItems}
-                myCustomers={staffSummary.myCustomers}
-              />
-            </SectionCard>
-
-            <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-              <SectionCard
-                title="งานที่ฉันต้องติดตาม"
-                description="รวมงาน blocked และ waiting customer ที่เกี่ยวข้องกับคุณโดยตรง"
-              >
-                {myAttentionItems.length === 0 ? (
-                  <EmptyState
-                    title="ไม่มีงานที่ต้องติดตามเป็นพิเศษ"
-                    description="ตอนนี้ยังไม่มี blocked หรือ waiting customer items ของคุณ"
-                  />
-                ) : (
-                  <AttentionList items={myAttentionItems} />
-                )}
-              </SectionCard>
-
-              <SectionCard
-                title="งานใกล้ถึงกำหนด"
-                description="ดูเฉพาะงานของคุณที่ควรเร่งดำเนินการในช่วงสั้น ๆ"
-              >
-                {myRecentItems.length === 0 ? (
-                  <EmptyState
-                    title="ยังไม่มีงานใกล้ถึงกำหนด"
-                    description="เมื่อมี due date ในงานของคุณ ระบบจะแสดงรายการในส่วนนี้"
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {myRecentItems.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="font-medium text-slate-900">{item.title}</p>
-                        <p className="mt-1 text-sm text-slate-600">ลูกค้าที่เกี่ยวข้องอยู่ในรอบงานที่คุณดูแล</p>
-                        <p className="mt-1 text-sm text-slate-500">กำหนดส่ง: {item.dueDate}</p>
-                      </div>
-                    ))}
+                  <div className="mt-3 flex gap-2 text-xs">
+                    <span className="rounded-full bg-white px-3 py-1 text-slate-600">ค้าง {row.open}</span>
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">รอลูกค้า {row.waiting}</span>
+                    <span className="rounded-full bg-rose-50 px-3 py-1 text-rose-700">ติดปัญหา {row.blocked}</span>
                   </div>
-                )}
-              </SectionCard>
-            </section>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
 
-            <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-              <SectionCard
-                title="ลูกค้าที่ฉันดูแล"
-                description="แสดงเฉพาะลูกค้าที่ assign ให้คุณหรืออยู่ในความรับผิดชอบของคุณ"
-              >
-                {visibleCustomers.length === 0 ? (
-                  <EmptyState
-                    title="ยังไม่มีลูกค้าที่ผูกกับคุณ"
-                    description="เมื่อมีการ assign ลูกค้าให้คุณ รายการจะปรากฏในส่วนนี้"
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {visibleCustomers.map((customer) => (
-                      <div key={customer.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="font-medium text-slate-900">{customer.name}</p>
-                        <p className="mt-1 text-sm text-slate-500">รหัสลูกค้า: {customer.code}</p>
-                        <p className="mt-1 text-sm text-slate-600">สถานะบริการ: {customer.serviceStatus}</p>
-                      </div>
-                    ))}
+          <SectionCard title="สรุปตามลูกค้า">
+            <div className="space-y-3">
+              {customerRows.map((row) => (
+                <div key={row.cycleId} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-slate-950">{row.customerName}</p>
+                      <p className="mt-1 text-sm text-slate-500">เสร็จ {row.completed}/{row.total}</p>
+                    </div>
+                    <p className="text-lg font-bold text-slate-950">{Math.round((row.completed / row.total) * 100)}%</p>
                   </div>
-                )}
-              </SectionCard>
+                  <div className="mt-3 h-2 rounded-full bg-white">
+                    <div className="h-2 rounded-full bg-slate-900" style={{ width: `${Math.round((row.completed / row.total) * 100)}%` }} />
+                  </div>
+                  <div className="mt-3 flex gap-2 text-xs">
+                    <span className="rounded-full bg-white px-3 py-1 text-slate-600">ค้าง {row.open}</span>
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">รอ {row.waiting}</span>
+                    <span className="rounded-full bg-rose-50 px-3 py-1 text-rose-700">ปัญหา {row.blocked}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        </section>
 
-              <SectionCard
-                title="Recent Updates Relevant to Me"
-                description="ประวัติการอัปเดตล่าสุดจากงานที่คุณเป็นผู้รับผิดชอบ"
-              >
-                {relevantUpdates.length === 0 ? (
-                  <EmptyState
-                    title="ยังไม่มีอัปเดตล่าสุด"
-                    description="เมื่อมีการเปลี่ยนสถานะในงานของคุณ ระบบจะแสดงประวัติในส่วนนี้"
-                  />
-                ) : (
-                  <StatusUpdateList updates={relevantUpdates.slice(0, 6)} />
-                )}
-              </SectionCard>
-            </section>
-          </>
-        ) : null}
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 text-center shadow-sm">
+          <p className="text-sm text-slate-600">งานเสร็จแล้ว {completedItems.length} รายการ</p>
+          <Link href="/work-cycles" className="mt-3 inline-flex rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
+            ไปหน้า My Tasks
+          </Link>
+        </div>
       </main>
     </AppShell>
   );

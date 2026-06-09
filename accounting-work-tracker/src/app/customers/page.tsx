@@ -2,105 +2,51 @@ import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/phase2/empty-state";
 import { PageHeader } from "@/components/phase2/page-header";
 import { SectionCard } from "@/components/phase2/section-card";
-import { CustomerCreateForm } from "@/components/phase2/customer-create-form";
-import { CustomerListPanel } from "@/components/phase2/customer-list-panel";
-import { BusinessTypeManagement } from "@/components/phase2/business-type-management";
 import { requirePermission } from "@/lib/auth/session";
-import { getAssignableUserProfiles, getBusinessTypes, getCustomers } from "@/lib/supabase/queries";
+import { getBusinessTypes, getCustomers } from "@/lib/supabase/queries";
 
 export default async function CustomersPage() {
   await requirePermission("manage_customers");
-  const [businessTypes, customers, profiles] = await Promise.all([
-    getBusinessTypes(),
-    getCustomers(),
-    getAssignableUserProfiles(),
-  ]);
-
-  const isConnectedMode = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const staffOptions = profiles;
-  const managerOptions = profiles.filter((item) => item.role === "admin" || item.role === "manager");
-
-  const summary = [
-    { label: "ลูกค้าทั้งหมด", value: customers.length.toString() },
-    {
-      label: "ประเภทธุรกิจ",
-      value: businessTypes.length.toString(),
-    },
-    {
-      label: "กำลังเริ่มต้นบริการ",
-      value: customers.filter((item) => item.serviceStatus === "onboarding").length.toString(),
-    },
-  ];
+  const [businessTypes, customers] = await Promise.all([getBusinessTypes(), getCustomers()]);
+  const businessTypeMap = new Map(businessTypes.map((item) => [item.id, item.name]));
 
   return (
     <AppShell>
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-5 sm:px-6 lg:py-8">
         <PageHeader
-          title="Customer Management"
-          description="จัดการข้อมูลลูกค้าและประเภทธุรกิจสำหรับใช้ต่อยอดงานรายเดือน"
-          badge={isConnectedMode ? "Supabase connected mode" : "Mock data mode"}
+          title="Customers"
+          description="รายชื่อลูกค้าที่ใช้สร้างรอบงานบัญชีรายเดือน"
+          badge="Local data"
+          hideDescription={false}
         />
 
-        <section className="grid gap-4 md:grid-cols-3">
-          {summary.map((item) => (
-            <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">{item.label}</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{item.value}</p>
-            </div>
-          ))}
-        </section>
-
-        <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-          <div className="space-y-6">
-            <SectionCard
-              title="เพิ่มลูกค้าใหม่"
-              description="สำหรับ manager และ admin ที่มีสิทธิ์ manage_customers สามารถสร้างลูกค้าและตั้ง owner เริ่มต้นได้จากหน้านี้"
-            >
-              <CustomerCreateForm
-                businessTypes={businessTypes.filter((item) => item.active)}
-                staffOptions={staffOptions}
-                managerOptions={managerOptions}
-              />
-            </SectionCard>
-
-            <SectionCard
-              title="Business Type Management"
-              description="เพิ่ม แก้ไข เปิดปิดใช้งาน หรือลบประเภทธุรกิจจากหน้าเว็บได้เลย โดยระบบจะกันการลบรายการที่ยังถูกใช้งานอยู่"
-            >
-              <BusinessTypeManagement
-                businessTypes={businessTypes}
-                isConnectedMode={isConnectedMode}
-              />
-            </SectionCard>
-          </div>
-
-          <SectionCard
-            title="รายการลูกค้า"
-            description="แก้ไขรายละเอียดลูกค้า กำหนด owner ปิดใช้งาน หรือลบอย่างปลอดภัยจากหน้าเดียว โดยข้อมูลที่เกี่ยวข้องจะถูก revalidate อัตโนมัติ"
-          >
-            {customers.length === 0 ? (
-              <EmptyState
-                title="ยังไม่มีข้อมูลลูกค้า"
-                description="เมื่อเชื่อม Supabase แล้ว ข้อมูลลูกค้าจะแสดงในส่วนนี้ทันที"
-              />
-            ) : (
-              <>
-                {profiles.length === 0 ? (
-                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    ยังไม่มี user profiles ที่พร้อม assign, แต่ยังแก้ไขข้อมูลลูกค้า ปิด active หรือลบลูกค้าที่ไม่มีประวัติงานได้
+        <SectionCard title="รายชื่อลูกค้า">
+          {customers.length === 0 ? (
+            <EmptyState title="ยังไม่มีลูกค้า" description="เพิ่มข้อมูลลูกค้าเมื่อพร้อมเชื่อมฐานข้อมูลจริง" />
+          ) : (
+            <div className="space-y-3">
+              {customers.map((customer) => (
+                <div key={customer.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-bold text-slate-950">{customer.name}</p>
+                      <p className="mt-1 text-sm text-slate-500">{customer.code} · {customer.taxId}</p>
+                    </div>
+                    <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                      {customer.serviceStatus}
+                    </span>
                   </div>
-                ) : null}
-                <CustomerListPanel
-                  customers={customers}
-                  businessTypes={businessTypes}
-                  staffOptions={staffOptions}
-                  managerOptions={managerOptions}
-                  profilesCount={profiles.length}
-                />
-              </>
-            )}
-          </SectionCard>
-        </div>
+                  <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-3">
+                    <p>ประเภท: {businessTypeMap.get(customer.businessTypeId) ?? "-"}</p>
+                    <p>ผู้รับผิดชอบ: {customer.assignedUserName}</p>
+                    <p>ผู้จัดการ: {customer.managerUserName}</p>
+                  </div>
+                  {customer.notes ? <p className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-600">{customer.notes}</p> : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
       </main>
     </AppShell>
   );

@@ -1,3 +1,5 @@
+import { monthlyAccountingWorkflow } from "@/lib/monthly-workflow";
+
 export type WorkItemStatus =
   | "not_started"
   | "in_progress"
@@ -43,115 +45,114 @@ export type WorkItemUpdate = {
 
 export const workCycles: WorkCycle[] = [
   {
-    id: "wc-2026-03-001",
+    id: "wc-2026-05-001",
     customerId: "cus-1",
     customerName: "บริษัท เอ บิสซิเนส จำกัด",
     periodYear: 2026,
-    periodMonth: 3,
+    periodMonth: 5,
     status: "in_progress",
-    generatedAt: "2026-04-01 09:00",
+    generatedAt: "2026-06-01 09:00",
     generatedBy: "admin",
   },
   {
-    id: "wc-2026-03-002",
+    id: "wc-2026-05-002",
     customerId: "cus-2",
     customerName: "บริษัท บี เทรดดิ้ง จำกัด",
     periodYear: 2026,
-    periodMonth: 3,
+    periodMonth: 5,
     status: "at_risk",
-    generatedAt: "2026-04-01 09:00",
+    generatedAt: "2026-06-01 09:00",
     generatedBy: "admin",
   },
   {
-    id: "wc-2026-03-003",
+    id: "wc-2026-05-003",
     customerId: "cus-3",
-    customerName: "ร้าน ครัวสุขใจ",
+    customerName: "ร้านครัวสุขใจ",
     periodYear: 2026,
-    periodMonth: 3,
+    periodMonth: 5,
     status: "planned",
-    generatedAt: "2026-04-01 09:00",
+    generatedAt: "2026-06-01 09:00",
     generatedBy: "admin",
   },
 ];
 
-export const workItems: WorkItem[] = [
+const cycleSetup: Array<{
+  cycleId: string;
+  assignedUserId: string;
+  assignedTo: string;
+  statuses: WorkItemStatus[];
+  notes?: Record<number, string>;
+  blockedReasons?: Record<number, string>;
+}> = [
   {
-    id: "wi-1",
-    workCycleId: "wc-2026-03-001",
-    title: "ตรวจสอบรายรับและค่าใช้จ่าย",
+    cycleId: "wc-2026-05-001",
     assignedUserId: "user-staff-a",
     assignedTo: "พนักงาน A",
-    status: "in_progress",
-    dueDate: "2026-04-05",
-    note: "เริ่มตรวจรายการแล้ว",
+    statuses: ["completed", "completed", "in_progress", "not_started", "not_started", "not_started", "not_started"],
+    notes: {
+      3: "กำลังบันทึกรายการใน Express",
+    },
   },
   {
-    id: "wi-2",
-    workCycleId: "wc-2026-03-001",
-    title: "กระทบยอดธนาคาร",
-    assignedUserId: "user-staff-a",
-    assignedTo: "พนักงาน A",
-    status: "waiting_customer",
-    dueDate: "2026-04-07",
-    note: "รอ statement เพิ่มเติม",
-  },
-  {
-    id: "wi-3",
-    workCycleId: "wc-2026-03-002",
-    title: "ตรวจสอบสต็อกคงเหลือ",
+    cycleId: "wc-2026-05-002",
     assignedUserId: "user-staff-b",
     assignedTo: "พนักงาน B",
-    status: "blocked",
-    dueDate: "2026-04-04",
-    blockedReason: "ลูกค้ายังไม่ส่งรายงานสินค้าคงเหลือ",
+    statuses: ["completed", "waiting_customer", "not_started", "not_started", "blocked", "not_started", "not_started"],
+    notes: {
+      2: "รอเอกสารขายเพิ่มเติม",
+    },
+    blockedReasons: {
+      5: "ยังไม่ได้รับหนังสือรับรองหัก ณ ที่จ่ายจากลูกค้า",
+    },
   },
   {
-    id: "wi-4",
-    workCycleId: "wc-2026-03-002",
-    title: "ตรวจสอบเจ้าหนี้และลูกหนี้",
-    assignedUserId: "user-manager-1",
-    assignedTo: "หัวหน้าทีม 1",
-    status: "not_started",
-    dueDate: "2026-04-08",
-  },
-  {
-    id: "wi-5",
-    workCycleId: "wc-2026-03-003",
-    title: "เตรียมรายการเปิดรอบเดือนแรก",
+    cycleId: "wc-2026-05-003",
     assignedUserId: "user-staff-c",
     assignedTo: "พนักงาน C",
-    status: "not_started",
-    dueDate: "2026-04-10",
-    note: "ลูกค้า onboarding ใหม่",
+    statuses: ["not_started", "not_started", "not_started", "not_started", "not_started", "not_started", "not_started"],
   },
 ];
+
+export const workItems: WorkItem[] = cycleSetup.flatMap((cycle) =>
+  monthlyAccountingWorkflow.map((step, index) => ({
+    id: `${cycle.cycleId}-step-${index + 1}`,
+    workCycleId: cycle.cycleId,
+    title: step.title,
+    assignedUserId: cycle.assignedUserId,
+    assignedTo: cycle.assignedTo,
+    status: cycle.statuses[index],
+    dueDate: `2026-06-${String(5 + index * 2).padStart(2, "0")}`,
+    note: cycle.notes?.[index + 1],
+    blockedReason: cycle.blockedReasons?.[index + 1],
+  })),
+);
 
 export const workItemUpdates: WorkItemUpdate[] = [
   {
     id: "up-1",
-    workItemId: "wi-1",
-    oldStatus: "not_started",
-    newStatus: "in_progress",
-    comment: "เริ่มตรวจเอกสารและลงรายการเบื้องต้น",
+    workItemId: "wc-2026-05-001-step-1",
+    oldStatus: "in_progress",
+    newStatus: "completed",
+    comment: "รับเอกสารครบแล้ว",
     updatedBy: "พนักงาน A",
-    createdAt: "2026-04-03 10:15",
+    createdAt: "2026-06-03 10:15",
   },
   {
     id: "up-2",
-    workItemId: "wi-2",
+    workItemId: "wc-2026-05-002-step-2",
     oldStatus: "in_progress",
     newStatus: "waiting_customer",
-    comment: "ขอ statement เดือนมีนาคมเพิ่ม",
-    updatedBy: "พนักงาน A",
-    createdAt: "2026-04-04 14:20",
+    comment: "รอเอกสารขายเพิ่มเติม",
+    updatedBy: "พนักงาน B",
+    createdAt: "2026-06-04 14:20",
   },
   {
     id: "up-3",
-    workItemId: "wi-3",
+    workItemId: "wc-2026-05-002-step-5",
     oldStatus: "in_progress",
     newStatus: "blocked",
-    comment: "ยังไม่ได้รับรายงานสต็อกจากลูกค้า",
+    comment: "ยังไม่ได้รับหนังสือรับรองหัก ณ ที่จ่าย",
     updatedBy: "พนักงาน B",
-    createdAt: "2026-04-04 16:45",
+    createdAt: "2026-06-04 16:45",
   },
 ];

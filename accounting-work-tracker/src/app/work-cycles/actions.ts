@@ -186,10 +186,6 @@ export async function updateWorkItemStatusAction(
     return { error: "ข้อมูลไม่ครบ" };
   }
 
-  if (!getNextAllowedStatuses(currentStatus).includes(nextStatus)) {
-    return { error: "สถานะถัดไปไม่ถูกต้อง" };
-  }
-
   if ((nextStatus === "blocked" || nextStatus === "waiting_customer") && comment === "") {
     return { error: "กรุณาระบุหมายเหตุสำหรับสถานะนี้" };
   }
@@ -200,9 +196,19 @@ export async function updateWorkItemStatusAction(
     return { error: workItemAccess.error };
   }
 
+  const actualWorkItem = workItemAccess.workItem;
+
+  if (actualWorkItem.workCycleId !== workCycleId) {
+    return { error: "รอบงานไม่ตรงกับรายการงาน" };
+  }
+
+  if (!getNextAllowedStatuses(actualWorkItem.status).includes(nextStatus)) {
+    return { error: "สถานะงานมีการเปลี่ยนแปลงแล้ว กรุณาโหลดหน้าใหม่" };
+  }
+
   const supabase = getSupabaseServerClient();
 
-  const { error: workItemError } = await supabase
+  const { data: updatedRows, error: workItemError } = await supabase
     .from("work_items")
     .update({
       status: nextStatus,
@@ -211,17 +217,23 @@ export async function updateWorkItemStatusAction(
       updated_by: updatedBy,
       updated_at: new Date().toISOString(),
       completed_at: nextStatus === "completed" ? new Date().toISOString() : null,
-      started_at: currentStatus === "not_started" && nextStatus === "in_progress" ? new Date().toISOString() : null,
+      started_at: actualWorkItem.status === "not_started" && nextStatus === "in_progress" ? new Date().toISOString() : null,
     })
-    .eq("id", workItemId);
+    .eq("id", workItemId)
+    .eq("status", actualWorkItem.status)
+    .select("id");
 
   if (workItemError) {
     return { error: workItemError.message || "อัปเดต work item ไม่สำเร็จ" };
   }
 
+  if (!updatedRows || updatedRows.length !== 1) {
+    return { error: "สถานะงานมีการเปลี่ยนแปลงแล้ว กรุณาโหลดหน้าใหม่" };
+  }
+
   const { error: updateLogError } = await supabase.from("work_item_updates").insert({
     work_item_id: workItemId,
-    old_status: currentStatus,
+    old_status: actualWorkItem.status,
     new_status: nextStatus,
     comment,
     updated_by: updatedBy,
@@ -346,4 +358,3 @@ async function requireVisibleWorkItem(workItemId: string) {
 
   return { currentUser, workItem } as const;
 }
-

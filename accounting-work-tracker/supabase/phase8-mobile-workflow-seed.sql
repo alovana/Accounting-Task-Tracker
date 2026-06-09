@@ -1,19 +1,15 @@
-insert into business_types (name, description)
-values
-  ('บริษัทบริการ', 'งานบัญชีรายเดือนสำหรับธุรกิจบริการ'),
-  ('บริษัทซื้อขาย', 'งานบัญชีรายเดือนสำหรับธุรกิจซื้อขายสินค้า'),
-  ('ร้านอาหาร', 'งานบัญชีรายเดือนสำหรับร้านอาหารและธุรกิจที่มีเอกสารประจำวัน')
-on conflict do nothing;
+update checklist_templates
+set active = false
+where name not like 'งานบัญชีประจำเดือน - %';
 
 insert into checklist_templates (name, business_type_id, description)
 select 'งานบัญชีประจำเดือน - ' || bt.name, bt.id, 'ใช้ 7 ขั้นตอนหลักของงานบัญชีประจำเดือน'
 from business_types bt
-where bt.name in ('บริษัทบริการ', 'บริษัทซื้อขาย', 'ร้านอาหาร')
-  and not exists (
-    select 1 from checklist_templates ct
-    where ct.business_type_id = bt.id
-      and ct.name = 'งานบัญชีประจำเดือน - ' || bt.name
-  );
+where not exists (
+  select 1 from checklist_templates ct
+  where ct.business_type_id = bt.id
+    and ct.name = 'งานบัญชีประจำเดือน - ' || bt.name
+);
 
 insert into checklist_template_items (
   template_id,
@@ -43,16 +39,3 @@ where ct.name like 'งานบัญชีประจำเดือน - %'
     where cti.template_id = ct.id
       and cti.title = item.title
   );
-
-insert into customers (code, name, tax_id, business_type_id, service_status, notes)
-select seed.code, seed.name, seed.tax_id, bt.id, 'active'::service_status, seed.notes
-from (
-  values
-    ('CUS-001', 'บริษัท เอ บิสซิเนส จำกัด', '0105559000001', 'บริษัทบริการ', 'ลูกค้าทดสอบระบบรายแรก'),
-    ('CUS-002', 'บริษัท บี เทรดดิ้ง จำกัด', '0105559000002', 'บริษัทซื้อขาย', 'ลูกค้าทดสอบงานซื้อขาย'),
-    ('CUS-003', 'ร้านครัวสุขใจ', '3101200000033', 'ร้านอาหาร', 'ลูกค้าทดสอบร้านอาหาร')
-) as seed(code, name, tax_id, business_type_name, notes)
-join business_types bt on bt.name = seed.business_type_name
-where not exists (
-  select 1 from customers c where c.code = seed.code
-);

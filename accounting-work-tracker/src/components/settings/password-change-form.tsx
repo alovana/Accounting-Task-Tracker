@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { changePasswordAction, type ChangePasswordActionState } from "@/app/settings/actions";
 
 type PasswordFormState = {
@@ -22,12 +22,6 @@ export function PasswordChangeForm() {
   const isDisabled = useMemo(() => {
     return !form.password.trim() || !form.confirmPassword.trim();
   }, [form]);
-
-  useEffect(() => {
-    if (state.success) {
-      setForm(initialForm);
-    }
-  }, [state.success]);
 
   return (
     <form action={formAction} className="space-y-4">

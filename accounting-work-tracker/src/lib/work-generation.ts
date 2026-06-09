@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AppRole } from "@/lib/constants";
 import type { ChecklistTemplate, ChecklistTemplateItem, Customer } from "@/types/domain";
 
@@ -146,7 +147,7 @@ export async function generateMonthlyWorkForPeriod({
   periodYear,
   periodMonth,
 }: GenerationInput & {
-  supabase: any;
+  supabase: SupabaseClient;
   generatedBy: string;
 }): Promise<MonthlyGenerationResult> {
   const preview = buildMonthlyGenerationPreview({

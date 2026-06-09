@@ -1,12 +1,14 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { canAccess } from "@/lib/auth/permissions";
+import { demoUsers, findDemoUserByEmail } from "@/lib/auth/demo-users";
 import type { AppRole } from "@/lib/constants";
 import { getSupabaseAuthClient, getSupabaseServerClient } from "@/lib/supabase/server";
 import type { SessionUser } from "@/types/auth";
 
 const ACCESS_TOKEN_COOKIE_NAME = "att-access-token";
 const REFRESH_TOKEN_COOKIE_NAME = "att-refresh-token";
+const DEMO_ACCESS_PREFIX = "demo:";
 
 async function readSessionTokens() {
   const cookieStore = await cookies();
@@ -17,7 +19,33 @@ async function readSessionTokens() {
   };
 }
 
+function getDemoSessionUser(accessToken: string) {
+  if (process.env.NODE_ENV === "production" || !accessToken.startsWith(DEMO_ACCESS_PREFIX)) {
+    return null;
+  }
+
+  const email = accessToken.slice(DEMO_ACCESS_PREFIX.length);
+  const demoUser = findDemoUserByEmail(email);
+
+  if (!demoUser) {
+    return null;
+  }
+
+  return {
+    id: demoUser.id,
+    email: demoUser.email,
+    fullName: demoUser.fullName,
+    role: demoUser.role,
+  } satisfies SessionUser;
+}
+
 async function getSessionUserFromAccessToken(accessToken: string) {
+  const demoUser = getDemoSessionUser(accessToken);
+
+  if (demoUser) {
+    return demoUser;
+  }
+
   const authClient = getSupabaseAuthClient();
   const { data, error } = await authClient.auth.getUser(accessToken);
 
@@ -48,6 +76,17 @@ export async function getCurrentSessionUser(): Promise<SessionUser | null> {
   const { accessToken, refreshToken } = await readSessionTokens();
 
   if (!accessToken && !refreshToken) {
+    if (process.env.NODE_ENV !== "production") {
+      const adminUser = demoUsers.find((user) => user.role === "admin") ?? demoUsers[0];
+
+      return {
+        id: adminUser.id,
+        email: adminUser.email,
+        fullName: adminUser.fullName,
+        role: adminUser.role,
+      } satisfies SessionUser;
+    }
+
     return null;
   }
 
@@ -58,7 +97,7 @@ export async function getCurrentSessionUser(): Promise<SessionUser | null> {
     }
   }
 
-  if (!refreshToken) {
+  if (!refreshToken || refreshToken === "demo") {
     return null;
   }
 
@@ -99,4 +138,8 @@ export function getSessionRole(user: SessionUser): AppRole {
 export const sessionCookieNames = {
   accessToken: ACCESS_TOKEN_COOKIE_NAME,
   refreshToken: REFRESH_TOKEN_COOKIE_NAME,
+};
+
+export const demoSession = {
+  accessPrefix: DEMO_ACCESS_PREFIX,
 };
