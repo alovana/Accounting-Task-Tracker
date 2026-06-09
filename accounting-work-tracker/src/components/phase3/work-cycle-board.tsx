@@ -11,7 +11,6 @@ type WorkCycleBoardProps = {
   workCycles: WorkCycle[];
   workItems: WorkItem[];
   isStaffView: boolean;
-  currentUserId?: string;
   currentUserName: string;
 };
 
@@ -38,23 +37,6 @@ function isClosed(status: WorkItemStatus) {
   return status === "completed" || status === "skipped";
 }
 
-function belongsToCurrentUser(
-  item: WorkItem,
-  currentUserId: string | undefined,
-  currentUserName: string,
-  isStaffView: boolean,
-) {
-  if (isStaffView) {
-    return true;
-  }
-
-  if (currentUserId) {
-    return item.assignedUserId === currentUserId;
-  }
-
-  return item.assignedTo === currentUserName;
-}
-
 function getPeriodText(cycle: WorkCycle) {
   return `${String(cycle.periodMonth).padStart(2, "0")}/${cycle.periodYear}`;
 }
@@ -75,7 +57,6 @@ export function WorkCycleBoard({
   workCycles,
   workItems,
   isStaffView,
-  currentUserId,
   currentUserName,
 }: WorkCycleBoardProps) {
   const [query, setQuery] = useState("");
@@ -89,7 +70,6 @@ export function WorkCycleBoard({
       .map((cycle) => {
         const items = workItems
           .filter((item) => item.workCycleId === cycle.id)
-          .filter((item) => belongsToCurrentUser(item, currentUserId, currentUserName, isStaffView))
           .filter((item) => {
             if (statusFilter === "open" && isClosed(item.status)) {
               return false;
@@ -125,7 +105,7 @@ export function WorkCycleBoard({
         };
       })
       .filter((group): group is CustomerTaskGroup => Boolean(group));
-  }, [currentUserId, currentUserName, isStaffView, normalizedQuery, statusFilter, workCycles, workItems]);
+  }, [normalizedQuery, statusFilter, workCycles, workItems]);
 
   const selectedGroup = useMemo(() => {
     if (groups.length === 0) {

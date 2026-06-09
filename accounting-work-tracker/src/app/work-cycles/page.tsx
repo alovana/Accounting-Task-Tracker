@@ -51,7 +51,6 @@ export default async function WorkCyclesPage() {
               workCycles={visibleWorkCycles}
               workItems={visibleWorkItems}
               isStaffView={isStaffView}
-              currentUserId={currentUser.id}
               currentUserName={currentUser.fullName}
             />
           )}
