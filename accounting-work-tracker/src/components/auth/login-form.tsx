@@ -15,12 +15,13 @@ const initialState: LoginFormState = {
 
 const initialActionState: LoginActionState = {};
 
-export function LoginForm() {
+export function LoginForm({ demoAccessToken = "" }: { demoAccessToken?: string }) {
   const [form, setForm] = useState<LoginFormState>(initialState);
   const [state, formAction, isPending] = useActionState(loginAction, initialActionState);
 
   return (
     <form action={formAction} className="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <input type="hidden" name="demoAccessToken" value={demoAccessToken} />
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-700" htmlFor="email">
           อีเมล

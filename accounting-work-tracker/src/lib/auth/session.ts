@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isValidDemoAccessToken } from "@/lib/auth/demo-access";
 import { canAccess } from "@/lib/auth/permissions";
 import { demoUsers, findDemoUserByEmail } from "@/lib/auth/demo-users";
 import type { AppRole } from "@/lib/constants";
@@ -8,6 +9,7 @@ import type { SessionUser } from "@/types/auth";
 
 const ACCESS_TOKEN_COOKIE_NAME = "att-access-token";
 const REFRESH_TOKEN_COOKIE_NAME = "att-refresh-token";
+const DEMO_ACCESS_COOKIE_NAME = "att-demo-access";
 const DEMO_ACCESS_PREFIX = "demo:";
 
 async function readSessionTokens() {
@@ -16,11 +18,15 @@ async function readSessionTokens() {
   return {
     accessToken: cookieStore.get(ACCESS_TOKEN_COOKIE_NAME)?.value,
     refreshToken: cookieStore.get(REFRESH_TOKEN_COOKIE_NAME)?.value,
+    demoAccessToken: cookieStore.get(DEMO_ACCESS_COOKIE_NAME)?.value,
   };
 }
 
-function getDemoSessionUser(accessToken: string) {
-  if (process.env.NODE_ENV === "production" || !accessToken.startsWith(DEMO_ACCESS_PREFIX)) {
+function getDemoSessionUser(accessToken: string, demoAccessToken?: string) {
+  if (
+    !accessToken.startsWith(DEMO_ACCESS_PREFIX) ||
+    (process.env.NODE_ENV === "production" && !isValidDemoAccessToken(demoAccessToken))
+  ) {
     return null;
   }
 
@@ -39,8 +45,8 @@ function getDemoSessionUser(accessToken: string) {
   } satisfies SessionUser;
 }
 
-async function getSessionUserFromAccessToken(accessToken: string) {
-  const demoUser = getDemoSessionUser(accessToken);
+async function getSessionUserFromAccessToken(accessToken: string, demoAccessToken?: string) {
+  const demoUser = getDemoSessionUser(accessToken, demoAccessToken);
 
   if (demoUser) {
     return demoUser;
@@ -73,7 +79,7 @@ async function getSessionUserFromAccessToken(accessToken: string) {
 }
 
 export async function getCurrentSessionUser(): Promise<SessionUser | null> {
-  const { accessToken, refreshToken } = await readSessionTokens();
+  const { accessToken, refreshToken, demoAccessToken } = await readSessionTokens();
 
   if (!accessToken && !refreshToken) {
     if (process.env.NODE_ENV !== "production") {
@@ -91,7 +97,7 @@ export async function getCurrentSessionUser(): Promise<SessionUser | null> {
   }
 
   if (accessToken) {
-    const user = await getSessionUserFromAccessToken(accessToken);
+    const user = await getSessionUserFromAccessToken(accessToken, demoAccessToken);
     if (user) {
       return user;
     }
@@ -108,7 +114,7 @@ export async function getCurrentSessionUser(): Promise<SessionUser | null> {
     return null;
   }
 
-  return getSessionUserFromAccessToken(data.session.access_token);
+  return getSessionUserFromAccessToken(data.session.access_token, demoAccessToken);
 }
 
 export async function requireSessionUser() {
@@ -138,6 +144,7 @@ export function getSessionRole(user: SessionUser): AppRole {
 export const sessionCookieNames = {
   accessToken: ACCESS_TOKEN_COOKIE_NAME,
   refreshToken: REFRESH_TOKEN_COOKIE_NAME,
+  demoAccess: DEMO_ACCESS_COOKIE_NAME,
 };
 
 export const demoSession = {

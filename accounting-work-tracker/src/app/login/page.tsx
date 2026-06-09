@@ -2,8 +2,13 @@ import { LoginForm } from "@/components/auth/login-form";
 import { getCurrentSessionUser } from "@/lib/auth/session";
 import { APP_NAME } from "@/lib/constants";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ demo?: string }>;
+}) {
   const currentUser = await getCurrentSessionUser();
+  const { demo = "" } = await searchParams;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
@@ -19,7 +24,7 @@ export default async function LoginPage() {
           </div>
         ) : null}
 
-        <LoginForm />
+        <LoginForm demoAccessToken={demo} />
       </div>
     </main>
   );

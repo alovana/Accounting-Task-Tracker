@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isValidDemoAccessToken } from "@/lib/auth/demo-access";
 import { findDemoUserByCredentials } from "@/lib/auth/demo-users";
 import { demoSession, sessionCookieNames } from "@/lib/auth/session";
 import { getSupabaseAuthClient, getSupabaseServerClient } from "@/lib/supabase/server";
@@ -18,8 +19,8 @@ const sessionCookieOptions = {
   maxAge: 60 * 60 * 24 * 7,
 };
 
-async function signInWithDemoUser(email: string, password: string) {
-  if (process.env.NODE_ENV === "production") {
+async function signInWithDemoUser(email: string, password: string, demoAccessToken?: string) {
+  if (process.env.NODE_ENV === "production" && !isValidDemoAccessToken(demoAccessToken)) {
     return false;
   }
 
@@ -32,6 +33,9 @@ async function signInWithDemoUser(email: string, password: string) {
   const cookieStore = await cookies();
   cookieStore.set(sessionCookieNames.accessToken, `${demoSession.accessPrefix}${demoUser.email}`, sessionCookieOptions);
   cookieStore.set(sessionCookieNames.refreshToken, "demo", sessionCookieOptions);
+  if (demoAccessToken) {
+    cookieStore.set(sessionCookieNames.demoAccess, demoAccessToken, sessionCookieOptions);
+  }
   return true;
 }
 
@@ -41,6 +45,7 @@ export async function loginAction(
 ): Promise<LoginActionState> {
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "").trim();
+  const demoAccessToken = String(formData.get("demoAccessToken") || "").trim();
 
   if (!email || !password) {
     return { error: "กรุณากรอกอีเมลและรหัสผ่าน" };
@@ -51,7 +56,7 @@ export async function loginAction(
     const { data, error } = await authClient.auth.signInWithPassword({ email, password });
 
     if (error || !data.session || !data.user) {
-      if (await signInWithDemoUser(email, password)) {
+      if (await signInWithDemoUser(email, password, demoAccessToken)) {
         redirect("/dashboard");
       }
 
@@ -75,7 +80,7 @@ export async function loginAction(
     cookieStore.set(sessionCookieNames.refreshToken, data.session.refresh_token, sessionCookieOptions);
   } catch (error) {
     console.error("Failed to sign in with Supabase Auth", error);
-    if (await signInWithDemoUser(email, password)) {
+    if (await signInWithDemoUser(email, password, demoAccessToken)) {
       redirect("/dashboard");
     }
 
@@ -102,5 +107,6 @@ export async function logoutAction() {
 
   cookieStore.delete(sessionCookieNames.accessToken);
   cookieStore.delete(sessionCookieNames.refreshToken);
+  cookieStore.delete(sessionCookieNames.demoAccess);
   redirect("/login");
 }
